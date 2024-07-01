@@ -12,10 +12,13 @@ def getCutForces(conn, cutNameList, loadCaseName):
     whereClauses = []
     if cutNameList:
         joinString = 'SectionCut LIKE '
-        whereClauses.append(f"({' OR '.join([joinString + f'\'%{cut}%\'' for cut in cutNameList])})")
+        whereClauses.append('(' + ' OR '.join([joinString + f"'%{cut}%'" for cut in cutNameList]) + ')')
+
+        #whereClauses.append(f"({' OR '.join([joinString + f'\'%{cut}%\'' for cut in cutNameList])})")
     if loadCaseName:
         joinString = 'OutputCase LIKE '
-        whereClauses.append(f"({' OR '.join([joinString + f'\'%{load}%\'' for load in loadCaseName])})")
+        whereClauses.append('(' + ' OR '.join([joinString + f"'%{load}%'" for load in loadCaseName]) + ')')
+        #whereClauses.append(f"({' OR '.join([joinString + f'\'%{load}%\'' for load in loadCaseName])})")
     if whereClauses:
         query += ' WHERE ' + ' AND '.join(whereClauses)
 
