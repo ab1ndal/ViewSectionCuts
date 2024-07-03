@@ -227,20 +227,16 @@ def update_load_case_names(content):
     global conn
     if not content:
         return [],[]
-    #print('Updating Load Case Names')
     _, content_string = content.split(',')
     decoded = base64.b64decode(content_string)
     file = io.BytesIO(decoded)
     conn = connectDB(file)
-    #print('Connection established')
     query = 'SELECT DISTINCT OutputCase FROM "Section Cut Forces - Analysis"'
     data = getData(conn, query=query)
 
     query = 'SELECT DISTINCT SectionCut FROM "Section Cut Forces - Analysis"'
     cutNames = getData(conn, query=query)
     cutGroups = getCutGroup(cutNames['SectionCut'].tolist())
-    #print('Data retrieved')
-    #print(data['OutputCase'].tolist())
     return data['OutputCase'].tolist(), cutGroups
 
 
@@ -341,11 +337,7 @@ def update_output(n_clicks, content, height_content, cut_name_list, load_case_na
         file = io.BytesIO(decoded)
         connection = connectDB(file)
 
-        #print(conn)
-        print('Getting Data')
-
         data = getCutForces(connection, cut_name_list, load_case_name)
-        print('Data Retrieved')
         
         output_cases = load_case_name
         

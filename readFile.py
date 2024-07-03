@@ -10,9 +10,7 @@ def getData(connection, **kwargs):
     
     if tableName:
         query = f'SELECT * FROM "{tableName}"'
-    print("Applying the query")
     data = pd.read_sql(query, connection)
-    print("Query Applied")
     return data
 
 def connectDB(filePath, connection=None):
