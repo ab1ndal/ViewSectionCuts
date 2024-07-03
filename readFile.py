@@ -10,18 +10,20 @@ def getData(connection, **kwargs):
     
     if tableName:
         query = f'SELECT * FROM "{tableName}"'
+    print("Applying the query")
     data = pd.read_sql(query, connection)
+    print("Query Applied")
     return data
 
-def connectDB(filePath, conn=None):
-    if conn is None:
-        conn = sqlite3.connect(':memory:')
+def connectDB(filePath, connection=None):
+    if connection is None:
+        connection = sqlite3.connect(':memory:')
     xls = pd.ExcelFile(filePath)
     for sheet in xls.sheet_names:
         df = pd.read_excel(filePath, sheet_name=sheet, header=1).iloc[1:]
-        df.to_sql(sheet, conn, index=False)
-    conn.commit()
-    return conn
+        df.to_sql(sheet, connection, index=False)
+    connection.commit()
+    return connection
 
 ## Usage
 # filePath = r'C:\\Users\\abindal\\OneDrive - Nabih Youssef & Associates\\Documents\\00_Projects\\06_The Vault\\17JuneModels\\Part 302\\Displacement Study.xlsx'

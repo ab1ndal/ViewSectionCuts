@@ -1,7 +1,7 @@
-from dash import Dash, html, dash_table, dcc, Input, Output, callback, callback_context, no_update
+from dash import Dash, html, dash_table, dcc, Input, Output, callback, callback_context, no_update, State
 import pandas as pd
 from readFile import connectDB, getData
-from plotGlobalForces import getCutForces
+from plotGlobalForces import getCutForces, getCutGroup
 import plotly.express as px
 import plotly.graph_objs as go
 from plotly.subplots import make_subplots
@@ -19,6 +19,7 @@ PLOT_TITLE_FONT = dict(size=20)
 OVERALL_PLOT_TITLE_FONT = 25
 TICK_FONT = dict(size=12)
 LEGEND_FONT = dict(size=14)
+conn = None
 
 # Create subplots
 fig = make_subplots(rows=2, cols=3, subplot_titles=('F1', 'F2', 'F3', 'M1', 'M2', 'M3'),
@@ -30,6 +31,7 @@ app.layout = dmc.MantineProvider(
         dmc.Title("Global Building Responses", c="blue", size="h2"),
         dmc.Grid([
             dmc.Col([
+                dmc.Text("Upload Section Cut File", fw=500, size = 'sm'),
                 dcc.Upload(
                     id='upload-data',
                     children=html.Div([
@@ -52,6 +54,7 @@ app.layout = dmc.MantineProvider(
         ]),
         dmc.Grid([
             dmc.Col([
+                dmc.Text("Upload Height Label File", fw=500, size = 'sm'),
                 dcc.Upload(
                     id='upload-height-data',
                     children=html.Div([
@@ -74,12 +77,24 @@ app.layout = dmc.MantineProvider(
         ]),
         dmc.Grid([
         dmc.Col([
-        dmc.TextInput(label='Enter the names of Cuts',
-                      w = 300,
-                      error = True,
-                      id='cut-name-list', 
-                      description='Enter cut names, separated by commas',
-                      required=True),
+            dmc.MultiSelect(
+                label='Select the names of Cuts',
+                w = 300,
+                description='Select Cut Names from the list',
+                required=True,
+                error = True,
+                id='cut-name-list',
+                data=[],
+                nothingFound='No Cuts Found',
+                searchable=True),
+
+
+        # dmc.TextInput(label='Enter the names of Cuts',
+        #               w = 300,
+        #               error = True,
+        #               id='cut-name-list', 
+        #               description='Enter cut names, separated by commas',
+        #               required=True),
         ], span=4),
         dmc.Col([
         dmc.TextInput(label='Enter the line types for Load Cases',
@@ -94,12 +109,17 @@ app.layout = dmc.MantineProvider(
         
         dmc.Grid([
             dmc.Col([
-            dmc.TextInput(label='Enter the names of Load Cases',
-                      w = 300,
-                      error = True,
-                      id='load-case-name', 
-                      description='Enter load case names, separated by commas',
-                    required=True),
+            dmc.MultiSelect(
+                label='Enter the names of Load Cases',
+                w = 300,
+                description='Select Load Case Names from the list',
+                required=True,
+                error = True,
+                id='load-case-name',
+                data=[],
+                nothingFound='No Load Cases Found',
+                searchable=True,
+                ),
             ], span=4),
             dmc.Col([
             dmc.TextInput(label='Enter the names of colors for load cases',
@@ -167,6 +187,66 @@ app.layout = dmc.MantineProvider(
     ]
 )
 
+@app.callback(
+    Output('upload-data', 'children'),
+    Input('upload-data', 'contents'),
+    State('upload-data', 'filename')
+)
+def update_upload_text(contents, filename):
+    if contents is not None:
+        return html.Div(['File ', html.B(html.A(filename, style = {'color':'blue'})), ' Uploaded. Drag/Drop/Select another file if desired.'])
+    else:
+        return html.Div([
+            'Drag and Drop the Section Cut File or ',
+            html.A('Select a File')
+        ])
+
+@app.callback(
+    Output('upload-height-data', 'children'),
+    Input('upload-height-data', 'contents'),
+    State('upload-height-data', 'filename')
+)
+def update_upload_text(contents, filename):
+    if contents is not None:
+        return html.Div(['File ', html.B(html.A(filename, style = {'color':'blue'})), ' Uploaded. Drag/Drop/Select another file if desired.'])
+    else:
+        return html.Div([
+            'Drag and Drop the Height Data File or ',
+            html.A('Select a File')
+        ])
+
+
+#When upload-data is triggered, the contents of the file are read and the data is stored in the conn variable (used globally)
+#Autoupdate the multi-select with the load case names and cut names
+@callback(
+    Output('load-case-name', 'data'),
+    Output('cut-name-list', 'data'),
+    Input('upload-data', 'contents')
+)
+def update_load_case_names(content):
+    global conn
+    if not content:
+        return [],[]
+    #print('Updating Load Case Names')
+    _, content_string = content.split(',')
+    decoded = base64.b64decode(content_string)
+    file = io.BytesIO(decoded)
+    conn = connectDB(file)
+    #print('Connection established')
+    query = 'SELECT DISTINCT OutputCase FROM "Section Cut Forces - Analysis"'
+    data = getData(conn, query=query)
+
+    query = 'SELECT DISTINCT SectionCut FROM "Section Cut Forces - Analysis"'
+    cutNames = getData(conn, query=query)
+    cutGroups = getCutGroup(cutNames['SectionCut'].tolist())
+    #print('Data retrieved')
+    #print(data['OutputCase'].tolist())
+    return data['OutputCase'].tolist(), cutGroups
+
+
+
+
+
 @callback(
     [Output('data-table', 'data'),
      Output('subplot-graph', 'figure')],
@@ -197,6 +277,7 @@ app.layout = dmc.MantineProvider(
      Input('height-step', 'value')]]
 )
 def update_output(n_clicks, content, height_content, cut_name_list, load_case_name, load_case_color, reset_clicks, plot_title, clear_clicks, line_type_list, shear_lims, axial_lims, moment_lims, torsion_lims, height_lims):
+    global conn
     if not callback_context.triggered:
         return no_update, no_update
     
@@ -204,10 +285,10 @@ def update_output(n_clicks, content, height_content, cut_name_list, load_case_na
         _, height_content_string = height_content.split(',')
         decoded_height = base64.b64decode(height_content_string)
         height_file = io.BytesIO(decoded_height)
-        conn=connectDB(height_file)
+        conn_height=connectDB(height_file)
         query = 'SELECT FloorLabel as story, SAP2000Elev as height FROM "Floor Elevations"'        
-        height_data = getData(conn, query=query)
-        conn.close()
+        height_data = getData(conn_height, query=query)
+        conn_height.close()
     
     trigger_id = callback_context.triggered[0]['prop_id'].split('.')[0]
 
@@ -248,22 +329,23 @@ def update_output(n_clicks, content, height_content, cut_name_list, load_case_na
         fig.data = []
 
         # Default values if inputs are empty
-        cut_name_list = cut_name_list.split(',') if cut_name_list else ['Overall']
-        load_case_name = load_case_name.split(',') if load_case_name else ['SLE-X', 'SLE-Y', '1.0D+0.5L']
+        #cut_name_list = cut_name_list.split(',') if cut_name_list else ['Overall']
+        #load_case_name = load_case_name.split(',') if load_case_name else ['SLE-X', 'SLE-Y', '1.0D+0.5L']
         colList = load_case_color.split(',') if load_case_color else [distinctipy.get_hex(col) for col in distinctipy.get_colors(len(load_case_name))]
         typeList = line_type_list.split(',') if line_type_list else ['solid', 'dash', 'dot', 'dashdot', 'longdash', 'longdashdot']
 
         # Query the database
-        #conn = connectDB(file_location)
+        # TODO: remove this....
         _, content_string = content.split(',')
         decoded = base64.b64decode(content_string)
         file = io.BytesIO(decoded)
-        conn = connectDB(file)
+        connection = connectDB(file)
 
-        print(conn)
+        #print(conn)
+        print('Getting Data')
 
-        data = getCutForces(conn, cut_name_list, load_case_name)
-
+        data = getCutForces(connection, cut_name_list, load_case_name)
+        print('Data Retrieved')
         
         output_cases = load_case_name
         
@@ -271,12 +353,8 @@ def update_output(n_clicks, content, height_content, cut_name_list, load_case_na
         for cutI, cutName in enumerate(cut_name_list):
             for cI, case in enumerate(output_cases):
                 filtered_data = data[(data['OutputCase'] == case) & (data['SectionCut'].str.contains(cutName))]
-                fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=filtered_data['F1'], mode='lines', name=f'{case}_{cutName}', line = dict(color =colList[cI], dash=typeList[cutI%len(typeList)]),showlegend=True, legendgroup=case+cutName), row=1, col=1)
-                fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=filtered_data['F2'], mode='lines', name=f'{case}_{cutName}', line = dict(color =colList[cI], dash=typeList[cutI%len(typeList)]),showlegend=False, legendgroup=case+cutName), row=1, col=2)
-                fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=filtered_data['F3'], mode='lines', name=f'{case}_{cutName}', line = dict(color =colList[cI], dash=typeList[cutI%len(typeList)]),showlegend=False, legendgroup=case+cutName), row=1, col=3)
-                fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=filtered_data['M1'], mode='lines', name=f'{case}_{cutName}', line = dict(color =colList[cI], dash=typeList[cutI%len(typeList)]),showlegend=False, legendgroup=case+cutName), row=2, col=1)
-                fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=filtered_data['M2'], mode='lines', name=f'{case}_{cutName}', line = dict(color =colList[cI], dash=typeList[cutI%len(typeList)]),showlegend=False, legendgroup=case+cutName), row=2, col=2)
-                fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=filtered_data['M3'], mode='lines', name=f'{case}_{cutName}', line = dict(color =colList[cI], dash=typeList[cutI%len(typeList)]),showlegend=False, legendgroup=case+cutName), row=2, col=3)
+                plotCases(colList, typeList, cutI, cutName, cI, case, filtered_data, 'Max', True)
+                plotCases(colList, typeList, cutI, cutName, cI, case, filtered_data, 'Min', False)
 
         
 
@@ -316,6 +394,15 @@ def update_output(n_clicks, content, height_content, cut_name_list, load_case_na
         
         return data.to_dict('records'), fig
     return no_update, no_update
+
+def plotCases(colList, typeList, cutI, cutName, cI, case, filtered_data, StepType, showLegend):
+    filtered_data = filtered_data[filtered_data['StepType'] == StepType]
+    fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=filtered_data['F1'], mode='lines', name=f'{case}_{cutName}', line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)]),showlegend=showLegend, legendgroup=case+cutName), row=1, col=1)
+    fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=filtered_data['F2'], mode='lines', name=f'{case}_{cutName}', line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)]),showlegend=False, legendgroup=case+cutName), row=1, col=2)
+    fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=filtered_data['F3'], mode='lines', name=f'{case}_{cutName}', line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)]),showlegend=False, legendgroup=case+cutName), row=1, col=3)
+    fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=filtered_data['M1'], mode='lines', name=f'{case}_{cutName}', line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)]),showlegend=False, legendgroup=case+cutName), row=2, col=1)
+    fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=filtered_data['M2'], mode='lines', name=f'{case}_{cutName}', line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)]),showlegend=False, legendgroup=case+cutName), row=2, col=2)
+    fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=filtered_data['M3'], mode='lines', name=f'{case}_{cutName}', line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)]),showlegend=False, legendgroup=case+cutName), row=2, col=3)
 
 if __name__ == '__main__':
     app.run_server(debug=True)
