@@ -368,4 +368,5 @@ if __name__ == '__main__':
     #app.run_server(debug=True)
     globalApp = GlobalAnalysisApp()
     server = globalApp.app.server
-    server.run(debug = False, host = '0.0.0.0', port = int(os.environ.get('PORT', 8050)))
+    gunicorn_command = f"gunicorn --bind 0.0.0.0:{os.environ.get('PORT', 8050)} app:server"
+    os.system(gunicorn_command)
