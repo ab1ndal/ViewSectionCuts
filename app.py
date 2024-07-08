@@ -24,6 +24,7 @@ class GlobalAnalysisApp:
         self.conn = None
         self.height_data = None
         self.port = 8050
+        self.server = self.app.server
 
         # Create subplots
         self.fig = make_subplots(rows=2, cols=3, subplot_titles=('F1', 'F2', 'F3', 'M1', 'M2', 'M3'),
@@ -366,6 +367,5 @@ class GlobalAnalysisApp:
 if __name__ == '__main__':
     #app.run_server(debug=True)
     globalApp = GlobalAnalysisApp()
-    app = globalApp.app
-    server = app.server
-    app.run_server(debug = False, host = '0.0.0.0', port = int(os.environ.get('PORT', 8050)))
+    server = globalApp.app.server
+    server.run(debug = False, host = '0.0.0.0', port = int(os.environ.get('PORT', 8050)))
