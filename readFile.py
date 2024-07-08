@@ -15,7 +15,7 @@ def getData(connection, **kwargs):
 
 def connectDB(filePath, connection=None):
     if connection is None:
-        connection = sqlite3.connect(':memory:')
+        connection = sqlite3.connect(':memory:', check_same_thread=False)
     xls = pd.ExcelFile(filePath)
     for sheet in xls.sheet_names:
         df = pd.read_excel(filePath, sheet_name=sheet, header=1).iloc[1:]
