@@ -22,6 +22,7 @@ class GlobalAnalysisApp:
         self.LEGEND_FONT = dict(size=14)
         self.conn = None
         self.height_data = None
+        self.port = 8050
 
         # Create subplots
         self.fig = make_subplots(rows=2, cols=3, subplot_titles=('F1', 'F2', 'F3', 'M1', 'M2', 'M3'),
@@ -350,7 +351,7 @@ class GlobalAnalysisApp:
             return data.to_dict('records'), self.fig
     
     def runApp(self):
-        self.app.run_server(debug=True)     
+        self.app.run_server(debug=True, port = self.port)     
 
     def plotCases(self, colList, typeList, cutI, cutName, cI, case, filtered_data, StepType, showLegend):
         filtered_data = filtered_data[filtered_data['StepType'] == StepType]
