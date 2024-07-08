@@ -1,1 +1,1 @@
-web: python app.py --port 8050
+web: gunicorn -b 0.0.0.0:$PORT app:app.server
