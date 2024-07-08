@@ -12,7 +12,7 @@ import base64
 import io
 
 class GlobalAnalysisApp:
-    def __init__(self, *args, **kwargs):
+    def __init__(self):
         self.app = Dash(__name__)
         #server = app.server
         self.AXIS_TITLE_FONT = dict(size=14)
