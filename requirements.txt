@@ -9,3 +9,4 @@ pandasql==0.7.3
 plotly==5.22.0
 SQLAlchemy==2.0.31
 gunicorn==22.0.0
+openpyxl==3.0.9
