@@ -365,5 +365,7 @@ class GlobalAnalysisApp:
 
 if __name__ == '__main__':
     #app.run_server(debug=True)
-    app = GlobalAnalysisApp().app.server
+    globalApp = GlobalAnalysisApp()
+    app = globalApp.app
+    server = app.server
     app.run_server(debug = False, host = '0.0.0.0', port = int(os.environ.get('PORT', 8050)))
