@@ -364,9 +364,10 @@ class GlobalAnalysisApp:
         self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=filtered_data['M2'], mode='lines', name=f'{case}_{cutName}', line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)]),showlegend=False, legendgroup=case+cutName), row=2, col=2)
         self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=filtered_data['M3'], mode='lines', name=f'{case}_{cutName}', line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)]),showlegend=False, legendgroup=case+cutName), row=2, col=3)
 
+
+globalApp = GlobalAnalysisApp()
+server = globalApp.app.server
+
 if __name__ == '__main__':
-    #app.run_server(debug=True)
-    globalApp = GlobalAnalysisApp()
-    server = globalApp.app.server
-    gunicorn_command = f"gunicorn --bind 0.0.0.0:{os.environ.get('PORT', 8050)} app:server"
-    os.system(gunicorn_command)
+    globalApp.runApp()
+    
