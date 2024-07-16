@@ -90,6 +90,7 @@ class Drifts:
         self.Hmax = Hmax
 
     def getElements(self, groupName):
+        #print(f'Getting elements for {groupName}')
         if self.objectType == 'Links':
             query = f"""
             SELECT ObjectLabel, MIN(CAST(C1.Z AS FLOAT),CAST(C2.Z AS FLOAT)) AS Zmin, MAX(CAST(C1.Z AS FLOAT),CAST(C2.Z AS FLOAT)) AS Zmax
@@ -152,6 +153,8 @@ class Drifts:
 
     def getDrift(self, groupName, caseName, caseType='Env'):
         elementList = self.getElements(groupName)
+        #print('Elements found!')
+        #print(elementList)
         if self.objectType == 'Links':
             if caseType == 'Env':
                 query = f"""
@@ -167,6 +170,8 @@ class Drifts:
                 ORDER BY Zmax DESC
                 """
                 driftData = ps.sqldf(query, locals())
+                #print("Drift Data")
+                #print(driftData)
                 return driftData
 
         elif self.objectType == 'Joints':
@@ -183,7 +188,8 @@ class Drifts:
             return elementList
     
     def getDriftPlot(self, groupList, caseList, caseType='Env'):
-        colList = distinctipy.get_colors(len(caseList), [(1,1,1)])
+        #colList = distinctipy.get_colors(len(caseList), [(1,1,1)])
+        colList = ['#1f77b4','#ff7f0e']
         allData = pd.DataFrame()
         for group in groupList:
             fig, ax = plt.subplots(1, 2, figsize=(10, 5))
@@ -252,10 +258,12 @@ groupList = ['S2_DRIFT']
 caseList = ['MCEr-Disp-GM11-HorOnly']
 driftObj.getDriftPlot(groupList, caseList, caseType='TH')
 """
-filePath = r'C:\\Users\\abindal\\OneDrive - Nabih Youssef & Associates\\Documents\\00_Projects\\06_The Vault\\20240624 Models\\305\\DriftLinks_305.xlsx'
-saveLocation = r'C:\\Users\\abindal\\OneDrive - Nabih Youssef & Associates\\Documents\\00_Projects\\06_The Vault\\20240624 Models\\305\\'
-driftObj = Drifts(filePath, saveLocation, objectType='Links', Dmax=0.006, Dlim=0.004, Hmin=-60.365, Hmax=29.835)
-groupList = ['Drift-S12B', 'Drift-S12C', 'Drift-S13B']
+filePath = r'C:\\Users\\abindal\\OneDrive - Nabih Youssef & Associates\\Documents\\00_Projects\\06_The Vault\\20240715 Models\\305\\20240715_LinkDeformation_305.xlsx'
+saveLocation = r'C:\\Users\\abindal\\OneDrive - Nabih Youssef & Associates\\Documents\\00_Projects\\06_The Vault\\20240715 Models\\305\\'
+driftObj = Drifts(filePath, saveLocation, objectType='Links', Dmax=0.011, Dlim=0.004, Hmin=-60.365, Hmax=29.835)
+groupList = ['Drift_S12A', 'Drift_S12B', 'Drift_S12C', 'Drift_S13D', 'Drift_S12', 
+             'Drift_S13A', 'Drift_S13B', 'Drift_S13C', 'Drift_S13D', 'Drift_S13E', 
+             'Drift_S13F', 'Drift_S13G', 'Drift_S13H', 'Drift_S13J', 'Drift_S13K']
 #groupList = ['S12B_DRIFT']
 
 caseList = ['SLE-X', 'SLE-Y']

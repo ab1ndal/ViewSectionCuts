@@ -5,7 +5,7 @@ import distinctipy
 
 
 filePath = r"C:\\Users\\abindal\\OneDrive - Nabih Youssef & Associates\\Documents\\00_Projects\\06_The Vault\\20240624 Models\\305\\"
-rxnFile = "JointReaction_305.xlsx"
+rxnFile = "JointReactionMCE_305.xlsx"
 connection = connectDB(filePath+rxnFile)
 
 query = 'SELECT * FROM "Groups 2 - Assignments"'
@@ -30,20 +30,20 @@ def getReactionGroupAll(reactionAll, groupData, groupNames, caseName, stepName):
     reactionGroup = ps.sqldf(query, locals())
     return reactionGroup
 
-def plotFriction2(filePath, reactionData, groupData):
+def plotFriction2(filePath, reactionData, groupData, EQx = 'MCE-X', EQy = 'MCE-Y'):
     fig, ax = plt.subplots(1, 2, figsize=(10, 5))
     groupNames = ['FND_Zone1','FND_Zone2','FND_Zone3','FND_Zone4','FND_Zone5','FND_Zone6']
     reactionDL = getReactionGroupAll(reactionData, groupData, groupNames, '1.0D+0.5L', 'Max')
-    reactionEQx = getReactionGroupAll(reactionData, groupData, groupNames, 'SLE-X', 'Max')
-    reactionEQy = getReactionGroupAll(reactionData, groupData, groupNames, 'SLE-Y', 'Max')
+    reactionEQx = getReactionGroupAll(reactionData, groupData, groupNames, EQx, 'Max')
+    reactionEQy = getReactionGroupAll(reactionData, groupData, groupNames, EQy, 'Max')
     barWidth = 0.8/2
     bars = ax[0].bar([x for x in range(len(reactionDL['GroupName']))], reactionDL['F3_Total'], label='1.0D+0.5L (F3)', width = barWidth)
     for bar in bars:
         ax[0].text(bar.get_x() + bar.get_width()/2, bar.get_height(), f'{int(bar.get_height())}', ha='center', va='bottom',fontsize=6)
-    bars = ax[1].bar([x-barWidth/2 for x in range(len(reactionEQx['GroupName']))], reactionEQx['F1_Total'], label='SLE-X (F1)', width = barWidth)
+    bars = ax[1].bar([x-barWidth/2 for x in range(len(reactionEQx['GroupName']))], reactionEQx['F1_Total'], label= EQx + ' (F1)', width = barWidth)
     for bar in bars:
         ax[1].text(bar.get_x() + bar.get_width()/2, bar.get_height(), f'{int(bar.get_height())}', ha='center', va='bottom',fontsize=6)
-    bars = ax[1].bar([x+barWidth/2 for x in range(len(reactionEQy['GroupName']))], reactionEQy['F2_Total'], label='SLE-Y (F2)', width = barWidth)
+    bars = ax[1].bar([x+barWidth/2 for x in range(len(reactionEQy['GroupName']))], reactionEQy['F2_Total'], label=EQy + ' (F2)', width = barWidth)
     for bar in bars:
         ax[1].text(bar.get_x() + bar.get_width()/2, bar.get_height(), f'{int(bar.get_height())}', ha='center', va='bottom',fontsize=6)
     for i in range(2):
@@ -56,16 +56,16 @@ def plotFriction2(filePath, reactionData, groupData):
         ax[i].legend(loc='upper right', fontsize=10)
         ax[i].set_title('Base Reaction at Foundation Groups')
     ax[0].set_ylim([0, 5e5])
-    ax[1].set_ylim([0, 2e4])
+    ax[1].set_ylim([0, 1e5])
     plt.tight_layout()
     plt.savefig(filePath + 'ReactionPlotTotal.png', dpi = 300)
     
     fig, ax = plt.subplots(1, 1, figsize=(5, 5))
     barWidth = 0.8/2
-    bars = ax.bar([x-barWidth/2 for x in range(len(reactionDL['GroupName']))], reactionEQx['F1_Total']/reactionDL['F3_Total'], label='SLE-X', width = barWidth)
+    bars = ax.bar([x-barWidth/2 for x in range(len(reactionDL['GroupName']))], reactionEQx['F1_Total']/reactionDL['F3_Total'], label=EQx, width = barWidth)
     for bar in bars:
         ax.text(bar.get_x() + bar.get_width()/2, bar.get_height(), f'{round(bar.get_height(),3)}', ha='center', va='bottom', fontsize=6)
-    bars = ax.bar([x+barWidth/2 for x in range(len(reactionDL['GroupName']))], reactionEQy['F2_Total']/reactionDL['F3_Total'], label='SLE-Y', width = barWidth)
+    bars = ax.bar([x+barWidth/2 for x in range(len(reactionDL['GroupName']))], reactionEQy['F2_Total']/reactionDL['F3_Total'], label=EQy, width = barWidth)
     for bar in bars:
         ax.text(bar.get_x() + bar.get_width()/2, bar.get_height(), f'{round(bar.get_height(),3)}', ha='center', va='bottom', fontsize=6)
     ax.set_xticks(range(len(reactionDL['GroupName'])))
@@ -76,7 +76,7 @@ def plotFriction2(filePath, reactionData, groupData):
     ax.set_xlabel('Groups')
     ax.legend(loc='upper right', fontsize=10)
     ax.set_title('Base Friction at Foundation Groups')
-    ax.set_ylim([0, 0.12])
+    ax.set_ylim([0, 0.8])
 
     plt.tight_layout()
     plt.savefig(filePath + 'FrictionPlotTotal.png', dpi = 300)
@@ -244,7 +244,7 @@ def plotFriction(groupList, loadCase, saveLocation=None, plotIndex=['F3'], label
 #plotAllGroups(['FND_Zone1','FND_Zone2','FND_Zone3','FND_Zone4','FND_Zone5','FND_Zone6'], filePath, "All",isReaction=False)
 #plotAllGroups(['FND_Zone2','FND_Zone3','FND_Zone4','FND_Zone5','FND_Zone6'], filePath, "Cols",isReaction=False)
 
-plotFriction2(filePath, reactionData, groupData)
+plotFriction2(filePath, reactionData, groupData, EQx = 'MCE-X', EQy = 'MCE-Y')
 
 #plotElevation(['AcCanyon', 'ColumnBase'], '1.0D+0.5L', filePath, 'F3', 'Base Reaction (kN)', isEQ=False)
 #plotElevation(['AcCanyon', 'ColumnBase'], 'SLE-X', filePath, 'F1', 'Base Reaction (kN)', isEQ=True)
