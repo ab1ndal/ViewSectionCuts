@@ -41,7 +41,11 @@ def plotDispEnv(connection, saveLocation, **kwargs):
     heightData = getData(connection, tableName='Joint Coordinates')
 
     # Join dispData and selectedJoint
-    query = "Select GroupName, dispData.Joint, OutputCase, Z, UX, UY FROM dispData INNER JOIN selectedJoint ON dispData.Joint = selectedJoint.ObjectLabel INNER JOIN heightData ON dispData.Joint = heightData.Joint"
+    query = """Select GroupName, dispData.Joint, OutputCase, CAST(Z AS FLOAT) AS Z_NUM, UX, UY 
+    FROM dispData INNER JOIN selectedJoint 
+        ON dispData.Joint = selectedJoint.ObjectLabel 
+    INNER JOIN heightData ON dispData.Joint = heightData.Joint
+    ORDER BY Z_NUM DESC"""
     dispData = ps.sqldf(query, locals())
     
     
@@ -50,27 +54,34 @@ def plotDispEnv(connection, saveLocation, **kwargs):
     # Group Name should be in the legend as line style
     # The plot should be saved as a png file
     fig, ax = plt.subplots(1, 2, figsize=(10, 5))
+    #lineStyleList = ['-', '--', '-.', ':']
+    #colorList = ['r', 'g', 'b', 'k']
+    colorList = distinctipy.get_colors(len(groupName), [(1,1,1)])
     lineStyleList = ['-', '--', '-.', ':']
-    colorList = ['r', 'g', 'b', 'k']
     for c_i, caseI in enumerate(caseName):
         for g_i, group in enumerate(groupName):
             data = dispData[(dispData['OutputCase'] == caseI) & (dispData['GroupName'] == group)]
-            # Sort the data by height
-            data = data.sort_values(by='Z')
-            ax[0].plot(data['UX'], data['Z'], label=group+caseI, linestyle=lineStyleList[g_i], color=colorList[c_i])
-            ax[1].plot(data['UY'], data['Z'], label=group+caseI, linestyle=lineStyleList[g_i], color=colorList[c_i])
+            ax[0].plot(data['UX'], data['Z_NUM'], label=f'{group}_{caseI}', linestyle=lineStyleList[c_i%4], color=colorList[g_i])
+            ax[1].plot(data['UY'], data['Z_NUM'], label=f'{group}_{caseI}', linestyle=lineStyleList[c_i%4], color=colorList[g_i])
     ax[0].set_xlabel('UX (m)')
     ax[0].set_ylabel('Height (m)')
     ax[0].set_title('X Displacement')
-    ax[0].set_xlim(0, 0.12)
-    ax[0].legend(loc='lower right', fontsize=LEGEND_FONT_SIZE)
+    ax[0].set_xlim(0, 0.1)
+    ax[0].legend(loc='lower right', fontsize=LABEL_LEGEND_FONT_SIZE)
     ax[1].set_xlabel('UY (m)')
     ax[1].set_ylabel('Height (m)')
     ax[1].set_title('Y Displacement')
-    ax[1].set_xlim(0, 0.12)
-    ax[1].legend(loc='lower right', fontsize=LEGEND_FONT_SIZE)
+    ax[1].set_xlim(0, 0.1)
+    ax[1].legend(loc='lower right', fontsize=LABEL_LEGEND_FONT_SIZE)
+    if 'elevationData' in kwargs:
+        ax[0].set_yticks(kwargs['elevationData']['SAP2000Elev'])
+        ax[0].set_yticklabels(kwargs['elevationData']['FloorLabel'])
+        ax[1].set_yticks(kwargs['elevationData']['SAP2000Elev'])
+        ax[1].set_yticklabels(kwargs['elevationData']['FloorLabel'])
+        ax[0].set_ylim(kwargs['elevationData']['SAP2000Elev'].iloc[-1], kwargs['elevationData']['SAP2000Elev'].iloc[0])
+        ax[1].set_ylim(kwargs['elevationData']['SAP2000Elev'].iloc[-1], kwargs['elevationData']['SAP2000Elev'].iloc[0])
     plt.tight_layout()
-    plt.savefig(saveLocation + 'DispPlot.png', dpi = 300)
+    plt.savefig(saveLocation + f'DispPlot_{caseName[0]}.png', dpi = 300)
 
     pass
 
@@ -258,13 +269,26 @@ groupList = ['S2_DRIFT']
 caseList = ['MCEr-Disp-GM11-HorOnly']
 driftObj.getDriftPlot(groupList, caseList, caseType='TH')
 """
-filePath = r'C:\\Users\\abindal\\OneDrive - Nabih Youssef & Associates\\Documents\\00_Projects\\06_The Vault\\20240715 Models\\305\\20240715_LinkDeformation_305.xlsx'
-saveLocation = r'C:\\Users\\abindal\\OneDrive - Nabih Youssef & Associates\\Documents\\00_Projects\\06_The Vault\\20240715 Models\\305\\'
-driftObj = Drifts(filePath, saveLocation, objectType='Links', Dmax=0.011, Dlim=0.004, Hmin=-60.365, Hmax=29.835)
-groupList = ['Drift_S12A', 'Drift_S12B', 'Drift_S12C', 'Drift_S13D', 'Drift_S12', 
-             'Drift_S13A', 'Drift_S13B', 'Drift_S13C', 'Drift_S13D', 'Drift_S13E', 
-             'Drift_S13F', 'Drift_S13G', 'Drift_S13H', 'Drift_S13J', 'Drift_S13K']
-#groupList = ['S12B_DRIFT']
+# filePath = r'C:\\Users\\abindal\\OneDrive - Nabih Youssef & Associates\\Documents\\00_Projects\\06_The Vault\\20240715 Models\\305\\20240715_LinkDeformation_305.xlsx'
+# saveLocation = r'C:\\Users\\abindal\\OneDrive - Nabih Youssef & Associates\\Documents\\00_Projects\\06_The Vault\\20240715 Models\\305\\'
+# driftObj = Drifts(filePath, saveLocation, objectType='Links', Dmax=0.011, Dlim=0.004, Hmin=-60.365, Hmax=29.835)
+# groupList = ['Drift_S12A', 'Drift_S12B', 'Drift_S12C', 'Drift_S13D', 'Drift_S12', 
+#              'Drift_S13A', 'Drift_S13B', 'Drift_S13C', 'Drift_S13D', 'Drift_S13E', 
+#              'Drift_S13F', 'Drift_S13G', 'Drift_S13H', 'Drift_S13J', 'Drift_S13K']
+# #groupList = ['S12B_DRIFT']
 
-caseList = ['SLE-X', 'SLE-Y']
-driftObj.outputDrifts(groupList, caseList, caseType='Env')
+# caseList = ['SLE-X', 'SLE-Y']
+# driftObj.outputDrifts(groupList, caseList, caseType='Env')
+
+
+filePath = r'C:\\Users\\abindal\\OneDrive - Nabih Youssef & Associates\\Documents\\00_Projects\\06_The Vault\\20240715 Models\\305\\20240715_ResponseAll_Pin_305.xlsx'
+saveLocation = r'C:\\Users\\abindal\\OneDrive - Nabih Youssef & Associates\\Documents\\00_Projects\\06_The Vault\\20240715 Models\\305\\'
+resultFile = connectDB(filePath)
+inputLoc = os.path.dirname(filePath)
+heightFile = inputLoc + '\\FloorElevations.xlsx'
+heightConnection = connectDB(heightFile)
+elevationData = getData(heightConnection, tableName='Floor Elevations')
+plotDispEnv(resultFile, groupName=['Disp_S12A', 'Disp_S12B', 'Disp_S12C', 'Disp_S13D', 'Disp_S12', 
+             'Disp_S13A', 'Disp_S13B', 'Disp_S13C', 'Disp_S13D', 'Disp_S13E', 
+             'Disp_S13F', 'Disp_S13G', 'Disp_S13H', 'Disp_S13J', 'Disp_S13K'], 
+            caseName=['SLE-Y'], saveLocation=saveLocation, elevationData=elevationData)
