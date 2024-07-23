@@ -1,6 +1,6 @@
 from dash import Dash, html, dash_table, dcc, Input, Output, callback, callback_context, no_update, State
 import pandas as pd
-from readFile import connectDB, getData
+from utils.readFile import connectDB, getData
 from plotGlobalForces import getCutForces, getCutGroup
 import plotly.express as px
 import plotly.graph_objs as go

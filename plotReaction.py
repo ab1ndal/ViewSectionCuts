@@ -1,4 +1,4 @@
-from readFile import connectDB, getData
+from utils.readFile import connectDB, getData
 import pandasql as ps
 import matplotlib.pyplot as plt
 import distinctipy

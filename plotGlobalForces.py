@@ -1,4 +1,4 @@
-from readFile import getData
+from utils.readFile import getData
 
 def getCutHeight(cutName):
     try:

@@ -1,4 +1,4 @@
-from readFile import *
+from utils.readFile import *
 import pandasql as ps
 import pandas as pd
 import matplotlib.pyplot as plt
