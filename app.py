@@ -18,7 +18,7 @@ class GlobalAnalysisApp:
         #server = app.server
         self.AXIS_TITLE_FONT = dict(size=14)
         self.PLOT_TITLE_FONT = dict(size=20)
-        self.OVERALL_PLOT_TITLE_FONT = 25
+        self.OVERALL_PLOT_TITLE_FONT = {'size':25}
         self.TICK_FONT = dict(size=12)
         self.LEGEND_FONT = dict(size=14)
         self.conn = None
@@ -87,13 +87,13 @@ class GlobalAnalysisApp:
         def createNumberInputComponent(labelPrefix, minValue, maxValue, stepValue, unit):
             return dmc.Grid([
                     dmc.Col([
-                        dmc.NumberInput(min=-9999999, max=9999999,precision=3,label=f'{labelPrefix} - Minimum ({unit})', id=f'{labelPrefix.lower()}-min', w=300, value=minValue),
+                        dmc.NumberInput(min=-1e8, max=1e8,precision=3,label=f'{labelPrefix} - Minimum ({unit})', id=f'{labelPrefix.lower()}-min', w=300, value=minValue),
                     ], span=4),
                     dmc.Col([
-                        dmc.NumberInput(min=-9999999, max=9999999,precision=3,label=f'{labelPrefix} - Maximum ({unit})', id=f'{labelPrefix.lower()}-max', w=300, value=maxValue),
+                        dmc.NumberInput(min=-1e8, max=1e8,precision=3,label=f'{labelPrefix} - Maximum ({unit})', id=f'{labelPrefix.lower()}-max', w=300, value=maxValue),
                     ], span=4),
                     dmc.Col([
-                        dmc.NumberInput(min=-9999999, max=9999999,precision=3,label=f'{labelPrefix} - Step Size ({unit})', id=f'{labelPrefix.lower()}-step', w=300, value=stepValue),
+                        dmc.NumberInput(min=-1e8, max=1e8,precision=3,label=f'{labelPrefix} - Step Size ({unit})', id=f'{labelPrefix.lower()}-step', w=300, value=stepValue),
                     ], span=4),
                 ])
 
@@ -342,25 +342,34 @@ class GlobalAnalysisApp:
             for cutI, cutName in enumerate(cut_name_list):
                 for cI, case in enumerate(load_case_name):
                     filtered_data = data[(data['OutputCase'] == case) & (data['SectionCut'].str.startswith(cutName))]
-                    self.plotCases(colList, typeList, cutI, cutName, cI, case, filtered_data, 'Max', True)
-                    self.plotCases(colList, typeList, cutI, cutName, cI, case, filtered_data, 'Min', False)
+                    self.plotCases(colList, typeList, cutI, cutName, cI, case, filtered_data, 'Max', True, SF = 1.0)
+                    if "SLE" in case:
+                        self.plotCases(colList, typeList, cutI, cutName, cI, case, filtered_data, 'Max', False, SF = -1.0)
+                    if case == 'TP' or case == 'TN':
+                        self.plotCases(colList, typeList, cutI, cutName, cI, case, filtered_data, None, True, SF = 1.0)
+                    self.plotCases(colList, typeList, cutI, cutName, cI, case, filtered_data, 'Min', False, SF = 1.0)
 
             self.fig.update_layout(
-                            title_text=plot_title,
-                            title_x=0.5,
-                            title_font_size=self.OVERALL_PLOT_TITLE_FONT,
-                            height=1000, width=1500,
-                            title = dict(font=self.PLOT_TITLE_FONT), template="plotly_white",
-                            legend=dict(
-                                font = self.LEGEND_FONT,
-                                orientation="h",
-                                yanchor="bottom",
-                                y=1.02,
-                                xanchor="right",
-                                x=1
-                            ),
-                            margin=dict(l=20, r=20, t=40, b=20),
-                            )
+                        title={
+                            'text': plot_title,
+                            'x': 0.5,
+                            'xanchor': 'center',
+                            'font': self.OVERALL_PLOT_TITLE_FONT
+                        },
+                        height=1000, width=1500,
+                        template="plotly_white",
+                        legend=dict(
+                            font = self.LEGEND_FONT,
+                            orientation="h",
+                            yanchor="bottom",
+                            y=-0.1,
+                            xanchor="center",
+                            x=0.5,
+                            traceorder="normal",
+                            tracegroupgap=20,
+                        ),
+                        margin=dict(l=20, r=20, t=60, b=20),
+                        )
             
             self.updateAxis(shear_lims, axial_lims, moment_lims, torsion_lims, height_lims)
             return data.to_dict('records'), self.fig
@@ -368,22 +377,20 @@ class GlobalAnalysisApp:
     def runApp(self):
         self.app.run_server(debug=True, port = self.port)     
 
-    def plotCases(self, colList, typeList, cutI, cutName, cI, case, filtered_data, StepType, showLegend):
-        filtered_data = filtered_data[filtered_data['StepType'] == StepType]
+    def plotCases(self, colList, typeList, cutI, cutName, cI, case, filtered_data, StepType, showLegend, SF=1.0):
+        if StepType is not None:
+            filtered_data = filtered_data[filtered_data['StepType'] == StepType]
         #print(filtered_data)
-        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=filtered_data['F1'], mode='lines', name=f'{case}_{cutName}', line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)]),showlegend=showLegend, legendgroup=case+cutName), row=1, col=1, secondary_y=False)
-        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=filtered_data['F2'], mode='lines', name=f'{case}_{cutName}', line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)]),showlegend=False, legendgroup=case+cutName), row=1, col=2, secondary_y=False)
-        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=filtered_data['F3'], mode='lines', name=f'{case}_{cutName}', line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)]),showlegend=False, legendgroup=case+cutName), row=1, col=3, secondary_y=False)
-        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=filtered_data['M1'], mode='lines', name=f'{case}_{cutName}', line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)]),showlegend=False, legendgroup=case+cutName), row=2, col=1, secondary_y=False)
-        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=filtered_data['M2'], mode='lines', name=f'{case}_{cutName}', line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)]),showlegend=False, legendgroup=case+cutName), row=2, col=2, secondary_y=False)
-        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=filtered_data['M3'], mode='lines', name=f'{case}_{cutName}', line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)]),showlegend=False, legendgroup=case+cutName), row=2, col=3, secondary_y=False)
+        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=SF*filtered_data['F1'], mode='lines', name=f'{case}_{cutName}', line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)]),showlegend=showLegend, legendgroup=case+cutName), row=1, col=1, secondary_y=False)
+        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=SF*filtered_data['F2'], mode='lines', name=f'{case}_{cutName}', line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)]),showlegend=False, legendgroup=case+cutName), row=1, col=2, secondary_y=False)
+        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=SF*filtered_data['F3'], mode='lines', name=f'{case}_{cutName}', line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)]),showlegend=False, legendgroup=case+cutName), row=1, col=3, secondary_y=False)
+        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=SF*filtered_data['M1'], mode='lines', name=f'{case}_{cutName}', line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)]),showlegend=False, legendgroup=case+cutName), row=2, col=1, secondary_y=False)
+        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=SF*filtered_data['M2'], mode='lines', name=f'{case}_{cutName}', line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)]),showlegend=False, legendgroup=case+cutName), row=2, col=2, secondary_y=False)
+        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=SF*filtered_data['M3'], mode='lines', name=f'{case}_{cutName}', line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)]),showlegend=False, legendgroup=case+cutName), row=2, col=3, secondary_y=False)
 
-        self.fig.add_trace(go.Scatter(y=[], x=[], mode='lines'), row=1, col=1, secondary_y=True)
-        self.fig.add_trace(go.Scatter(y=[], x=[], mode='lines'), row=1, col=2, secondary_y=True)
-        self.fig.add_trace(go.Scatter(y=[], x=[], mode='lines'), row=1, col=3, secondary_y=True)
-        self.fig.add_trace(go.Scatter(y=[], x=[], mode='lines'), row=2, col=1, secondary_y=True)
-        self.fig.add_trace(go.Scatter(y=[], x=[], mode='lines'), row=2, col=2, secondary_y=True)
-        self.fig.add_trace(go.Scatter(y=[], x=[], mode='lines'), row=2, col=3, secondary_y=True)
+        for i in range(1,3):
+            for j in range(1,4):
+                self.fig.add_trace(go.Scatter(y=[], x=[], mode='lines'), row=i, col=j, secondary_y=True)
 
 
 globalApp = GlobalAnalysisApp()
