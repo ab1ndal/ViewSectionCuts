@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 import distinctipy
 
 
-filePath = r"C:\\Users\\abindal\\OneDrive - Nabih Youssef & Associates\\Documents\\00_Projects\\06_The Vault\\20240624 Models\\305\\"
-rxnFile = "JointReactionMCE_305.xlsx"
+filePath = r"C:\\Users\\abindal\\OneDrive - Nabih Youssef & Associates\\Documents\\00_Projects\\06_The Vault\\20240715 Models\\305\\"
+rxnFile = "20240715_ResponseAll_Pin_305.xlsx"
 connection = connectDB(filePath+rxnFile)
 
 query = 'SELECT * FROM "Groups 2 - Assignments"'
@@ -56,7 +56,7 @@ def plotFriction2(filePath, reactionData, groupData, EQx = 'MCE-X', EQy = 'MCE-Y
         ax[i].legend(loc='upper right', fontsize=10)
         ax[i].set_title('Base Reaction at Foundation Groups')
     ax[0].set_ylim([0, 5e5])
-    ax[1].set_ylim([0, 1e5])
+    ax[1].set_ylim([0, 3.5e5])
     plt.tight_layout()
     plt.savefig(filePath + 'ReactionPlotTotal.png', dpi = 300)
     
@@ -76,7 +76,7 @@ def plotFriction2(filePath, reactionData, groupData, EQx = 'MCE-X', EQy = 'MCE-Y
     ax.set_xlabel('Groups')
     ax.legend(loc='upper right', fontsize=10)
     ax.set_title('Base Friction at Foundation Groups')
-    ax.set_ylim([0, 0.8])
+    ax.set_ylim([0, 1.4])
 
     plt.tight_layout()
     plt.savefig(filePath + 'FrictionPlotTotal.png', dpi = 300)
