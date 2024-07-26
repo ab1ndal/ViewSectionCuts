@@ -11,6 +11,9 @@ import plotly.io as pio
 import base64
 import io
 import os
+from utils.appComponents import createUploadComponent, createMultiSelectComponent, createTextInputComponent, createNumberInputComponent
+
+
 
 class GlobalAnalysisApp:
     def __init__(self):
@@ -55,7 +58,7 @@ class GlobalAnalysisApp:
                                         [dmc.Tab("Define", value="define-section-cuts"),
                                         dmc.Tab("Visualize", value="visualize-section-cuts")]
                                     ),
-                                    dmc.TabsPanel("Define Section Cuts Content", value="define-section-cuts"),
+                                    dmc.TabsPanel(id = 'define-section-cuts', value="define-section-cuts"),
                                     dmc.TabsPanel(id = 'visualize-section-cuts', value="visualize-section-cuts")
                                     ],
                                     color = "blue",
@@ -69,8 +72,8 @@ class GlobalAnalysisApp:
                                         [dmc.Tab("Define", value="define-drifts"),
                                         dmc.Tab("Visualize", value="visualize-drifts")]
                                     ),
-                                    dmc.TabsPanel("Define Drifts Content", value="define-drifts"),
-                                    dmc.TabsPanel("Visualize Drifts Content", value="visualize-drifts")
+                                    dmc.TabsPanel(id='define-drifts', value="define-drifts"),
+                                    dmc.TabsPanel(id='visualize-drifts', value="visualize-drifts")
                                     ],
                                     color = "blue",
                                     orientation = "horizontal",
@@ -83,71 +86,12 @@ class GlobalAnalysisApp:
             ]
         )
 
+    def defineSectionCut(self):
+        return dmc.MantineProvider(
+            dmc.Title("Define Section Cuts", c="blue", size="h2"),
+        )
 
-    def createLayout(self):
-        def createUploadComponent(idName, label):
-            return dmc.Grid([
-                        dmc.Col([
-                            dmc.Text(f"Upload {label} File", fw=500, size = 'sm'),
-                            dcc.Upload(
-                                id=idName,
-                                children=html.Div([
-                                    f'Drag and Drop the {label} File or ',
-                                    html.A('Select a File')
-                                ]),
-                                style={
-                                    'width': '90%',
-                                    'height': '40px',
-                                    'lineHeight': '40px',
-                                    'borderWidth': '1px',
-                                    'borderStyle': 'dashed',
-                                    'borderRadius': '5px',
-                                    'textAlign': 'center',
-                                    'margin': '10px'
-                                },
-                                multiple=False  # Allow only one file to be uploaded at a time
-                            )
-                        ], span=12),
-                    ])
-        
-        def createMultiSelectComponent(idName, label):
-            return dmc.Col([
-                            dmc.MultiSelect(
-                            label=f'Select the names of {label}',
-                            w = 300,
-                            description=f'Select {label} from the list',
-                            required=True,
-                            error = True,
-                            id=idName,
-                            data=[],
-                            nothingFound=f'No {label} Found',
-                            searchable=True)
-            ], span=4)
-        
-        def createTextInputComponent(idName, label, description, value):
-            return dmc.Col([
-                        dmc.TextInput(label=label,
-                                w = 300,
-                                error = True,
-                                id=idName,
-                                description=description,
-                                required=True,
-                                value=value),
-                    ], span=4)
-        
-        def createNumberInputComponent(labelPrefix, minValue, maxValue, stepValue, unit):
-            return dmc.Grid([
-                    dmc.Col([
-                        dmc.NumberInput(min=-1e8, max=1e8,precision=3,label=f'{labelPrefix} - Minimum ({unit})', id=f'{labelPrefix.lower()}-min', w=300, value=minValue),
-                    ], span=4),
-                    dmc.Col([
-                        dmc.NumberInput(min=-1e8, max=1e8,precision=3,label=f'{labelPrefix} - Maximum ({unit})', id=f'{labelPrefix.lower()}-max', w=300, value=maxValue),
-                    ], span=4),
-                    dmc.Col([
-                        dmc.NumberInput(min=-1e8, max=1e8,precision=3,label=f'{labelPrefix} - Step Size ({unit})', id=f'{labelPrefix.lower()}-step', w=300, value=stepValue),
-                    ], span=4),
-                ])
-
+    def visualizeSectionCut(self):
         return dmc.MantineProvider(
             theme={"colorScheme": "light"},
             children=[
@@ -200,6 +144,18 @@ class GlobalAnalysisApp:
                     ], gutter=0),   
             ])
 
+    # Function to utilize Gene
+    def defineGeneralizedDisp(self):
+        return dmc.MantineProvider(
+            dmc.Title("Define Generalized Displacements", c="blue", size="h2"),
+        )
+    
+    def visualizeGeneralizedDisp(self):
+        return dmc.MantineProvider(
+            dmc.Title("Visualize Generalized Displacements", c="blue", size="h2"),
+        )
+
+
     def registerCallbacks(self):
         @self.app.callback(
             Output('visualize-section-cuts', 'children'),
@@ -207,7 +163,34 @@ class GlobalAnalysisApp:
         )
         def visualizeSectionCuts(tab):
             if tab == 'visualize-section-cuts':
-                return self.createLayout()
+                return self.visualizeSectionCut()
+            return no_update
+
+        @self.app.callback(
+            Output('define-section-cuts', 'children'),
+            [Input('define-section-cuts', 'value')]
+        )
+        def defineSectionCuts(tab):
+            if tab == 'define-section-cuts':
+                return self.defineSectionCut()
+            return no_update
+        
+        @self.app.callback(
+            Output('visualize-drifts', 'children'),
+            [Input('visualize-drifts', 'value')]
+        )
+        def visualizeDrifts(tab):
+            if tab == 'visualize-drifts':
+                return self.visualizeGeneralizedDisp()
+            return no_update
+        
+        @self.app.callback(
+            Output('define-drifts', 'children'),
+            [Input('define-drifts', 'value')]
+        )
+        def defineDrifts(tab):
+            if tab == 'define-drifts':
+                return self.defineGeneralizedDisp()
             return no_update
 
         #Update the Section Cut file
