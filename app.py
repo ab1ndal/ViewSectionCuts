@@ -99,13 +99,13 @@ class GlobalAnalysisApp:
                 createUploadComponent('upload-height-data', 'Height Label'),
                 dmc.Grid([
                     createMultiSelectComponent('cut-name-list', 'Cuts'),
-                    createTextInputComponent('line-type-list', 'Enter the line types for Cuts', 'Enter line types, separated by commas', 'solid'),
-                    createTextInputComponent('load-case-types', 'Enter the Load Case type (Lin, RS, Others)', 'Enter Load Case types, separated by commas', ''),
+                    createTextInputComponent('line-type-list', 'Enter the line types for Cuts', 'Enter line types, separated by commas', value='solid'),
+                    createTextInputComponent('load-case-types', 'Enter the Load Case type (Lin, RS, Others)', 'Enter Load Case types, separated by commas', value=''),
                 ]),
                 dmc.Grid([
                     createMultiSelectComponent('load-case-name', 'Load Cases'),
-                    createTextInputComponent('load-case-colors', 'Enter the colors for Load Cases', 'Enter Load Case colors, separated by commas', 'red,blue,black'),
-                    createTextInputComponent('load-case-labels', 'Enter the labels for Load Cases', 'Enter Load Case labels, separated by commas', ''),
+                    createTextInputComponent('load-case-colors', 'Enter the colors for Load Cases', 'Enter Load Case colors, separated by commas', value='red,blue,black'),
+                    createTextInputComponent('load-case-labels', 'Enter the labels for Load Cases', 'Enter Load Case labels, separated by commas', value=''),
 
                 ]),
                 dmc.TextInput(label='Enter the title for the plots',
@@ -119,11 +119,13 @@ class GlobalAnalysisApp:
                 createNumberInputComponent('Height', -60.365, 29.835,  10, 'm'),
                 
                 #horizontal_spacing=0.05
+                dmc.Group([
                 dmc.Button("Submit", id='submit-button', color="blue"),
                 
                 dmc.Button("Reset Axis", id='reset-button', color="teal"),
                 
                 dmc.Button("Clear Data", id='clear-button', color="red"),
+                ]),
                 dmc.Grid([
                     dmc.Col([
                         dash_table.DataTable(id='data-table', page_size=12, style_table={'overflowX': 'auto'})
@@ -147,8 +149,29 @@ class GlobalAnalysisApp:
     # Function to utilize Gene
     def defineGeneralizedDisp(self):
         return dmc.MantineProvider(
-            dmc.Title("Define Generalized Displacements", c="blue", size="h2"),
-        )
+            theme={"colorScheme": "light"},
+            children=[
+                createUploadComponent('upload-data', 'Group Information'),
+                dmc.Grid([
+                createTextInputComponent('grid-list', 'Grid List', 'Enter grid labels separated by commas', placeholder='S12A,S12B,S12C'),
+                ]),
+                dmc.Grid([
+                    createTextInputComponent('drift-top-suffix', 
+                                             'Suffix for Top Joint group', 
+                                             'Enter the suffix used in the group definition', 
+                                             placeholder='Drift_Top_'),
+                    createTextInputComponent('drift-bot-suffix',
+                                            'Suffix for Bottom Joint group',
+                                            'Enter the suffix used in the group definition',
+                                            placeholder='Drift_Bot_'),
+                ]),
+                dmc.Group([
+                dmc.Button("Submit", id='submit-button-defineGenDisp', color="blue"),
+                dmc.Button("Clear Data", id='clear-button-defineGenDisp', color="red"),
+                ],
+                ),
+
+            ])
     
     def visualizeGeneralizedDisp(self):
         return dmc.MantineProvider(
