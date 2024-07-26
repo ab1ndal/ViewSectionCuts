@@ -31,9 +31,59 @@ class GlobalAnalysisApp:
         self.fig = make_subplots(rows=2, cols=3, subplot_titles=('F1', 'F2', 'F3', 'M1', 'M2', 'M3'),
                                  vertical_spacing=0.1, horizontal_spacing=0.08, specs=[[{"secondary_y": True}, {"secondary_y": True}, {"secondary_y": True}],
                                                                                       [{"secondary_y": True}, {"secondary_y": True}, {"secondary_y": True}]])
-        self.createLayout()
+        self.createMenu()
+        #self.createLayout()
         self.registerCallbacks()
         
+    def createMenu(self):
+        self.app.layout = dmc.MantineProvider(
+            theme={"colorScheme": "light"},
+            children = [
+                dmc.Title("Global Building Responses", c="blue", size="h2"),
+                dmc.Tabs(
+                    [
+                        dmc.TabsList(
+                            [
+                                dmc.Tab("Section Cuts", value="section-cuts"),
+                                dmc.Tab("Drifts", value="drifts"),
+                            ]
+                        ),
+                        dmc.TabsPanel(
+                            children=[
+                                dmc.Tabs(
+                                    [dmc.TabsList(
+                                        [dmc.Tab("Define", value="define-section-cuts"),
+                                        dmc.Tab("Visualize", value="visualize-section-cuts")]
+                                    ),
+                                    dmc.TabsPanel("Define Section Cuts Content", value="define-section-cuts"),
+                                    dmc.TabsPanel(id = 'visualize-section-cuts', value="visualize-section-cuts")
+                                    ],
+                                    color = "blue",
+                                    orientation = "horizontal",
+                                )], 
+                            value="section-cuts"),
+                        dmc.TabsPanel(
+                            children=[
+                                dmc.Tabs(
+                                    [dmc.TabsList(
+                                        [dmc.Tab("Define", value="define-drifts"),
+                                        dmc.Tab("Visualize", value="visualize-drifts")]
+                                    ),
+                                    dmc.TabsPanel("Define Drifts Content", value="define-drifts"),
+                                    dmc.TabsPanel("Visualize Drifts Content", value="visualize-drifts")
+                                    ],
+                                    color = "blue",
+                                    orientation = "horizontal",
+                                )]
+                            , value="drifts"),
+                    ],
+                    color = "blue",
+                    orientation = "horizontal",
+                )
+            ]
+        )
+
+
     def createLayout(self):
         def createUploadComponent(idName, label):
             return dmc.Grid([
@@ -98,10 +148,9 @@ class GlobalAnalysisApp:
                     ], span=4),
                 ])
 
-        self.app.layout = dmc.MantineProvider(
+        return dmc.MantineProvider(
             theme={"colorScheme": "light"},
             children=[
-                dmc.Title("Global Building Responses", c="blue", size="h2"),
                 createUploadComponent('upload-data', 'Section Cut'),
                 createUploadComponent('upload-height-data', 'Height Label'),
                 dmc.Grid([
@@ -152,6 +201,15 @@ class GlobalAnalysisApp:
             ])
 
     def registerCallbacks(self):
+        @self.app.callback(
+            Output('visualize-section-cuts', 'children'),
+            [Input('visualize-section-cuts', 'value')]
+        )
+        def visualizeSectionCuts(tab):
+            if tab == 'visualize-section-cuts':
+                return self.createLayout()
+            return no_update
+
         #Update the Section Cut file
         self.app.callback(
             Output('upload-data', 'children'),

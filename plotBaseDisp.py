@@ -92,8 +92,8 @@ class BaseDisp:
 
 
 if __name__ == '__main__':
-    fileLoc = r'C:\\Users\\abindal\\OneDrive - Nabih Youssef & Associates\\Documents\\00_Projects\\06_The Vault\\20240715 Models\\305\\'
-    fileName = fileLoc + '20240715_JointDispThermal_305_Seq_20230724.xlsx'
+    fileLoc = r'C:\\Users\\abindal\\OneDrive - Nabih Youssef & Associates\\Documents\\00_Projects\\06_The Vault\\20240715 Models\\305 Static\\'
+    fileName = fileLoc + '20240725_BaseDisplacement_305_Seq_StaticSpring.xlsx'
     caseList = ['1.0D+0.5L+TP', '1.0D+0.5L+TN']
     groupList = ['Base_S13A', 'Base_S12', 'Base_S12A', 'Base_S12B', 'Base_S12C', 'Base_S12D']
     baseDisp = BaseDisp(fileLoc, fileName, caseList, groupList)
