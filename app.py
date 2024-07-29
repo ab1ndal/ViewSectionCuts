@@ -151,7 +151,7 @@ class GlobalAnalysisApp:
         return dmc.MantineProvider(
             theme={"colorScheme": "light"},
             children=[
-                createUploadComponent('upload-data', 'Group Information'),
+                createUploadComponent('upload-gendisp-group', 'Group Information'),
                 dmc.Grid([
                 createTextInputComponent('grid-list', 'Grid List', 'Enter grid labels separated by commas', placeholder='S12A,S12B,S12C'),
                 ]),
@@ -307,11 +307,15 @@ class GlobalAnalysisApp:
         self.conn = connectDB(file)
         query = 'SELECT DISTINCT OutputCase FROM "Section Cut Forces - Analysis"'
         data = getData(self.conn, query=query)
+        data = data['OutputCase'].tolist()
+        #sort data
+        data.sort()
 
         query = 'SELECT DISTINCT SectionCut FROM "Section Cut Forces - Analysis"'
         cutNames = getData(self.conn, query=query)
         cutGroups = getCutGroup(cutNames['SectionCut'].tolist())
-        return data['OutputCase'].tolist(), cutGroups
+        cutGroups.sort()
+        return data, cutGroups
 
     def updateAxis(self, shear_lims, axial_lims, moment_lims, torsion_lims, height_lims):
         for row in range(1, 3):
