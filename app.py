@@ -285,6 +285,25 @@ class GlobalAnalysisApp:
 
                 return downloadData, False
             return no_update, True
+        
+        #Clear the data
+        @self.app.callback(
+            [Output('upload-gendisp-group', 'children',allow_duplicate=True),
+            Output('grid-list', 'value'),
+            Output('drift-top-suffix', 'value'),
+            Output('drift-bot-suffix', 'value'),
+            Output('output-file-name', 'value'),
+            Input('clear-button-defineGenDisp', 'n_clicks'),
+            ],
+            prevent_initial_call=True,
+        )
+        def clearGenDispDefnData(n_clicks):
+            if n_clicks:
+                self.conn = None
+                
+                return (self.updateFileUploadText(contents=None, filename='', fileCategory='Drift Group'), '', '', '', 'GeneralizedDisplacement_Definition')
+                
+            return no_update, no_update, no_update, no_update, no_update
 
 
         #Update the Height Label file
