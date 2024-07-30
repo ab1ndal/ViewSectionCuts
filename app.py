@@ -11,13 +11,14 @@ import plotly.io as pio
 import base64
 import io
 import os
-from utils.appComponents import createUploadComponent, createMultiSelectComponent, createTextInputComponent, createNumberInputComponent
-
+from utils.appComponents import createUploadComponent, createMultiSelectComponent, createTextInputComponent, createNumberInputComponent, createSelectComponent
+from GeneralizedDisplacement.defineGenDisp import defineGenDisp
 
 
 class GlobalAnalysisApp:
     def __init__(self):
         self.app = Dash(__name__)
+        self.app.config.suppress_callback_exceptions = True
         #server = app.server
         self.AXIS_TITLE_FONT = dict(size=14)
         self.PLOT_TITLE_FONT = dict(size=20)
@@ -88,7 +89,22 @@ class GlobalAnalysisApp:
 
     def defineSectionCut(self):
         return dmc.MantineProvider(
-            dmc.Title("Define Section Cuts", c="blue", size="h2"),
+            theme={"colorScheme": "light"},
+            children=[
+                dmc.Grid([
+                    createTextInputComponent('Def-cutName', 'Section Cut Prefix', 'Enter the prefix to be used in Section Cut names', placeholder='S12'),
+                ]),
+                dmc.Grid([
+                    createSelectComponent('Def-cutDirection', 'Normal Direction', description = 'Specify the direction normal to the Section Cut plane',
+                                          values=['X', 'Y', 'Z']),
+                ]),
+                dmc.Grid([
+                    createTextInputComponent('Def-groupName', 'Section Cut Group', 'Enter name of the group that the Section Cut cuts through', 
+                                             value='All'),
+                ]),
+                createNumberInputComponent('Normal Coordinate', -60.365, 29.835,  10, 'm'),
+
+            ]
         )
 
     def visualizeSectionCut(self):
@@ -151,7 +167,7 @@ class GlobalAnalysisApp:
         return dmc.MantineProvider(
             theme={"colorScheme": "light"},
             children=[
-                createUploadComponent('upload-gendisp-group', 'Group Information'),
+                createUploadComponent('upload-gendisp-group', 'Drift Group Information'),
                 dmc.Grid([
                 createTextInputComponent('grid-list', 'Grid List', 'Enter grid labels separated by commas', placeholder='S12A,S12B,S12C'),
                 ]),
@@ -165,12 +181,19 @@ class GlobalAnalysisApp:
                                             'Enter the suffix used in the group definition',
                                             placeholder='Drift_Bot_'),
                 ]),
+                dmc.Grid([
+                createTextInputComponent('output-file-name', 'Output File Name', 'Enter the name of the output excel file', value='GeneralizedDisplacement_Definition'),
+                ]),
                 dmc.Group([
                 dmc.Button("Submit", id='submit-button-defineGenDisp', color="blue"),
                 dmc.Button("Clear Data", id='clear-button-defineGenDisp', color="red"),
                 ],
                 ),
-
+                dcc.Download(id="download-GenDispDefn-excel"),
+                dmc.Alert("The file has been downloaded",
+                          id='GenDispDefn-download-modal',
+                          color = 'green',
+                          duration=2000),
             ])
     
     def visualizeGeneralizedDisp(self):
@@ -182,7 +205,8 @@ class GlobalAnalysisApp:
     def registerCallbacks(self):
         @self.app.callback(
             Output('visualize-section-cuts', 'children'),
-            [Input('visualize-section-cuts', 'value')]
+            [Input('visualize-section-cuts', 'value')],
+            suppress_callback_exceptions=True
         )
         def visualizeSectionCuts(tab):
             if tab == 'visualize-section-cuts':
@@ -191,7 +215,8 @@ class GlobalAnalysisApp:
 
         @self.app.callback(
             Output('define-section-cuts', 'children'),
-            [Input('define-section-cuts', 'value')]
+            [Input('define-section-cuts', 'value')],
+            suppress_callback_exceptions=True
         )
         def defineSectionCuts(tab):
             if tab == 'define-section-cuts':
@@ -200,7 +225,8 @@ class GlobalAnalysisApp:
         
         @self.app.callback(
             Output('visualize-drifts', 'children'),
-            [Input('visualize-drifts', 'value')]
+            [Input('visualize-drifts', 'value')],
+            suppress_callback_exceptions=True
         )
         def visualizeDrifts(tab):
             if tab == 'visualize-drifts':
@@ -209,7 +235,8 @@ class GlobalAnalysisApp:
         
         @self.app.callback(
             Output('define-drifts', 'children'),
-            [Input('define-drifts', 'value')]
+            [Input('define-drifts', 'value')],
+            suppress_callback_exceptions=True
         )
         def defineDrifts(tab):
             if tab == 'define-drifts':
@@ -217,24 +244,63 @@ class GlobalAnalysisApp:
             return no_update
 
         #Update the Section Cut file
-        self.app.callback(
+        @self.app.callback(
             Output('upload-data', 'children'),
             Input('upload-data', 'contents'),
-            State('upload-data', 'filename')
-        )(self.updateCutFileUploadText)
+            State('upload-data', 'filename'),
+            prevent_initial_call=True,
+            suppress_callback_exceptions=True
+        )
+        def updateCutFileName(contents, filename):
+            return self.updateFileUploadText(contents=contents, filename=filename, fileCategory='Section Cut')
+
+        # Update Group Information for Generalized Displacements
+        @self.app.callback(
+            Output('upload-gendisp-group', 'children'),
+            Input('upload-gendisp-group', 'contents'),
+            State('upload-gendisp-group', 'filename'),
+            prevent_initial_call=True,
+            suppress_callback_exceptions=True
+        )
+        def updateGenDispDefnFileName(contents, filename):
+            return self.updateFileUploadText(contents=contents, filename=filename, fileCategory='Drift Group')
+        
+        @self.app.callback(
+            Output('download-GenDispDefn-excel', 'data'),
+            Output('GenDispDefn-download-modal', 'hide'),
+            Input('submit-button-defineGenDisp', 'n_clicks'),
+            State('grid-list', 'value'),
+            State('drift-top-suffix', 'value'),
+            State('drift-bot-suffix', 'value'),
+            State('output-file-name', 'value'),
+            prevent_initial_call=True,
+            suppress_callback_exceptions=True
+        )
+        def handleGenDispDefnSubmit(n_clicks, gridList, topSuffix, botSuffix, outputFileName):
+            if n_clicks:
+                dfList = defineGenDisp(self.conn, gridList, topSuffix, botSuffix)
+                downloadData = dcc.send_bytes(self.downloadExcelFile(data=dfList, sheetnames=['DriftPoints', 'GenDispDefn'])
+                                                , f'{outputFileName}.xlsx')
+                # Show a modal with the message that the file was downloaded
+
+                return downloadData, False
+            return no_update, True
+
 
         #Update the Height Label file
         self.app.callback(
             Output('upload-height-data', 'children'),
             Input('upload-height-data', 'contents'),
-            State('upload-height-data', 'filename')
+            State('upload-height-data', 'filename'),
+            suppress_callback_exceptions=True
         )(self.updateHeightFileUploadText)
 
         #Update the Load Case Names and Section Cut Names
         self.app.callback(
         [Output('load-case-name', 'data'),
         Output('cut-name-list', 'data')],
-        Input('upload-data', 'contents')
+        Input('upload-data', 'contents'),
+        suppress_callback_exceptions=True
         )(self.updateCutCaseName)
 
         # Clear the data
@@ -242,7 +308,8 @@ class GlobalAnalysisApp:
             [Output('data-table', 'data', allow_duplicate=True),
              Output('subplot-graph', 'figure', allow_duplicate=True)],
             Input('clear-button', 'n_clicks'),
-            prevent_initial_call=True
+            prevent_initial_call=True,
+            suppress_callback_exceptions=True
         )(self.clearData)
 
         # Reset the axis
@@ -254,7 +321,8 @@ class GlobalAnalysisApp:
             [State('moment-min', 'value'),State('moment-max', 'value'),State('moment-step', 'value')],
             [State('torsion-min', 'value'),State('torsion-max', 'value'),State('torsion-step', 'value')],
             [State('height-min', 'value'),State('height-max', 'value'),State('height-step', 'value')]],
-            prevent_initial_call=True
+            prevent_initial_call=True,
+            suppress_callback_exceptions=True
         )(self.resetAxis)
 
         # Plot the data
@@ -270,17 +338,39 @@ class GlobalAnalysisApp:
             [State('moment-min', 'value'),State('moment-max', 'value'),State('moment-step', 'value')],
             [State('torsion-min', 'value'),State('torsion-max', 'value'),State('torsion-step', 'value')],
             [State('height-min', 'value'),State('height-max', 'value'),State('height-step', 'value')]],
-            prevent_initial_call=True
+            prevent_initial_call=True,
+            suppress_callback_exceptions=True
         )(self.plotData)
 
-    def updateCutFileUploadText(self, contents, filename):
+    def updateFileUploadText(self, **kwargs):
+        contents = kwargs.get('contents')
+        filename = kwargs.get('filename')
+        fileCategory = kwargs.get('fileCategory')
         if contents is not None:
+            _, content_string = contents.split(',')
+            decoded = base64.b64decode(content_string)
+            file = io.BytesIO(decoded)
+            self.conn = connectDB(file)
             return html.Div(['File ', html.B(html.A(filename, style = {'color':'blue'})), ' Uploaded. Drag/Drop/Select another file if desired.'])
         else:
             return html.Div([
-                'Drag and Drop the Section Cut File or ',
+                f'Drag and Drop the {fileCategory} File or ',
                 html.A('Select a File')
             ])
+    
+    #Function to create an excel file from the data and download it to the user
+    # inputs: list of dataframes with information, filename to save the file as
+    # output: download the file to the user
+    def downloadExcelFile(self, **kwargs):
+        data = kwargs.get('data')
+        sheetnames = kwargs.get('sheetnames')
+        output = io.BytesIO()
+        writer = pd.ExcelWriter(output, engine='openpyxl')
+        for i, df in enumerate(data):
+            df.to_excel(writer, sheet_name=sheetnames[i], index=False)
+        writer.close()
+        processedData = output.getvalue()
+        return processedData
 
     def updateHeightFileUploadText(self, content, filename):
         if content is not None:
@@ -301,14 +391,13 @@ class GlobalAnalysisApp:
     def updateCutCaseName(self, content):
         if not content:
             return [],[]
-        _, content_string = content.split(',')
-        decoded = base64.b64decode(content_string)
-        file = io.BytesIO(decoded)
-        self.conn = connectDB(file)
+        #_, content_string = content.split(',')
+        #decoded = base64.b64decode(content_string)
+        #file = io.BytesIO(decoded)
+        #self.conn = connectDB(file)
         query = 'SELECT DISTINCT OutputCase FROM "Section Cut Forces - Analysis"'
         data = getData(self.conn, query=query)
         data = data['OutputCase'].tolist()
-        #sort data
         data.sort()
 
         query = 'SELECT DISTINCT SectionCut FROM "Section Cut Forces - Analysis"'

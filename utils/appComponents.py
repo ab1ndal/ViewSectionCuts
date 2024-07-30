@@ -40,6 +40,27 @@ def createMultiSelectComponent(idName, label):
                     searchable=True)
     ], span=4)
 
+def createSelectComponent(idName, label, **kwargs):
+    values = kwargs.get('values')
+    if not values:
+        values = []
+    if 'description' in kwargs:
+        description = kwargs['description']
+    else:
+        description = f'Select {label} from the list'
+    return dmc.Col([
+                    dmc.Select(
+                    label=f'Select the name of {label}',
+                    w = 300,
+                    description=description,
+                    required=True,
+                    error = True,
+                    id=idName,
+                    data=values,
+                    nothingFound=f'No {label} Found',
+                    searchable=True)
+    ], span=4)
+
 def createTextInputComponent(idName, label, description, **kwargs):
     if 'placeholder' in kwargs:
         placeholder = kwargs['placeholder']
