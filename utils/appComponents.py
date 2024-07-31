@@ -1,10 +1,15 @@
 import dash_mantine_components as dmc
 from dash import dcc, html
 
-def createUploadComponent(idName, label):
+def createUploadComponent(idName, label, **kwargs):
+    if 'description' in kwargs:
+        description = kwargs['description']
+    else:
+        description = None
     return dmc.Grid([
                 dmc.Col([
                     dmc.Text(f"Upload {label} File", fw=500, size = 'sm'),
+                    dmc.Text(description, size = 'xs', color='dimmed'),
                     dcc.Upload(
                         id=idName,
                         children=html.Div([

@@ -167,7 +167,7 @@ class GlobalAnalysisApp:
         return dmc.MantineProvider(
             theme={"colorScheme": "light"},
             children=[
-                createUploadComponent('upload-gendisp-group', 'Drift Group Information'),
+                createUploadComponent('upload-gendisp-group', 'Drift Group Information', description='Upload the file with the following tables: "Joint Coordinates" and "Groups 2 - Assignments"'),
                 dmc.Grid([
                 createTextInputComponent('grid-list', 'Grid List', 'Enter grid labels separated by commas', placeholder='S12A,S12B,S12C'),
                 ]),
@@ -198,7 +198,25 @@ class GlobalAnalysisApp:
     
     def visualizeGeneralizedDisp(self):
         return dmc.MantineProvider(
-            dmc.Title("Visualize Generalized Displacements", c="blue", size="h2"),
+            theme={"colorScheme": "light"},
+            children=[
+                createUploadComponent('upload-gendisp-analysis', 'General Displacement Analysis File', 
+                                      description='The file should contain the following tables: "Jt Displacements - Generalized", "Joint Coordinates", "Gen Displ Defs 1 - Translation"'),
+                createUploadComponent('upload-height-data', 'Height Label',
+                                      description='The file should contain the following tables: "Floor Elevations"'),
+                dmc.Grid([
+                    createMultiSelectComponent('gm-list', 'Load Cases'),
+                    createMultiSelectComponent('grid-list', 'Grids'),
+                    createMultiSelectComponent('disp-list', 'Displacements'),
+                ]),
+                dmc.Grid([
+                    createTextInputComponent('load-case-labels', 'Enter the labels for Load Cases', 'Enter Load Case labels, separated by commas', value=''),
+                ]),
+                dmc.Group([
+                dmc.Button("Submit", id='submit-button-vizGenDisp', color="blue"),
+                dmc.Button("Clear", id='clear-button-vizGenDisp', color="red"),
+                ]),
+            ]
         )
 
 

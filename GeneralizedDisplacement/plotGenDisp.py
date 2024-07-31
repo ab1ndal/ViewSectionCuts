@@ -18,9 +18,23 @@ import distinctipy
 # 1. "Floor Elevations"
 
 class GeneralizedDisplacement:
-    def __init__(self, analysisFile, heightFile):
-        self.analysisFile = analysisFile
-        self.heightFile = heightFile
+    def __init__(self, **kwargs):#,analysisFile, heightFile):
+        if 'analysisFile' in kwargs:
+            self.analysisFile = kwargs['analysisFile']
+            self.connection = connectDB(self.analysisFile)
+        if 'heightFile' in kwargs:
+            self.heightFile = kwargs['heightFile']
+            self.heightConnection = connectDB(self.heightFile)
+
+        if 'analysisFileConnection' in kwargs:
+            self.connection = kwargs['analysisFileConnection']
+        if 'heightFileConnection' in kwargs:
+            self.heightConnection = kwargs['heightFileConnection']
+
+        self.GMList = self.getGMList()
+        self.GridList = self.getGridList()
+        self.DispList = self.getDispList()
+
         self.readAnalysisFile()
         self.readHeightFile()
         self.assignDriftLimit()
@@ -28,7 +42,7 @@ class GeneralizedDisplacement:
         self.compiledData = None
 
     def readAnalysisFile(self):
-        self.connection = connectDB(self.analysisFile)
+        #self.connection = connectDB(self.analysisFile)
         query = f"""
         SELECT GenDispl, OutputCase, max(abs(Translation)) as Disp
         FROM "Jt Displacements - Generalized"
@@ -42,8 +56,17 @@ class GeneralizedDisplacement:
         self.genDispDefn.drop(columns=['U1SF', 'U2SF'], inplace=True)
 
     def readHeightFile(self):
-        self.heightConnection = connectDB(self.heightFile)
+        #self.heightConnection = connectDB(self.heightFile)
         self.heightData = getData(self.heightConnection, tableName='Floor Elevations')
+
+    def getGMList(self):
+        return self.dispData['OutputCase'].unique()
+    
+    def getGridList(self):
+        return self.dispData['GenDispl'].str.split('_').str[0].unique()
+    
+    def getDispList(self):
+        return self.dispData['GenDispl'].str.split('_').str[2].unique()
 
     def assignDriftLimit(self, Dlim=0.004, Dmax=0.006):
         self.Dlim = Dlim
