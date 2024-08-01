@@ -43,6 +43,7 @@ class GlobalAnalysisApp:
         self.app.layout = dmc.MantineProvider(
             theme={"colorScheme": "light"},
             children = [
+                dcc.Store(id='file-upload-status'),
                 dmc.Title("Global Building Responses", c="blue", size="h2"),
                 dmc.Tabs(
                     [
@@ -111,7 +112,7 @@ class GlobalAnalysisApp:
         return dmc.MantineProvider(
             theme={"colorScheme": "light"},
             children=[
-                createUploadComponent('upload-data', 'Section Cut'),
+                createUploadComponent('upload-sectioncut-data', 'Section Cut'),
                 createUploadComponent('upload-height-data', 'Height Label'),
                 dmc.Grid([
                     createMultiSelectComponent('cut-name-list', 'Cuts'),
@@ -202,7 +203,7 @@ class GlobalAnalysisApp:
             children=[
                 createUploadComponent('upload-gendisp-analysis', 'General Displacement Analysis File', 
                                       description='The file should contain the following tables: "Jt Displacements - Generalized", "Joint Coordinates", "Gen Displ Defs 1 - Translation"'),
-                createUploadComponent('upload-height-data', 'Height Label',
+                createUploadComponent('upload-height-gendisp', 'Height Label',
                                       description='The file should contain the following tables: "Floor Elevations"'),
                 dmc.Grid([
                     createMultiSelectComponent('gm-list', 'Load Cases'),
@@ -210,7 +211,7 @@ class GlobalAnalysisApp:
                     createMultiSelectComponent('disp-list', 'Displacements'),
                 ]),
                 dmc.Grid([
-                    createTextInputComponent('load-case-labels', 'Enter the labels for Load Cases', 'Enter Load Case labels, separated by commas', value=''),
+                    createTextInputComponent('case-color-genDisp', 'Enter colors for Load Cases', 'Enter values, separated by commas', value=''),
                 ]),
                 dmc.Group([
                 dmc.Button("Submit", id='submit-button-vizGenDisp', color="blue"),
@@ -221,67 +222,17 @@ class GlobalAnalysisApp:
 
 
     def registerCallbacks(self):
-        @self.app.callback(
-            Output('visualize-section-cuts', 'children'),
-            [Input('visualize-section-cuts', 'value')],
-            suppress_callback_exceptions=True
-        )
-        def visualizeSectionCuts(tab):
-            if tab == 'visualize-section-cuts':
-                return self.visualizeSectionCut()
-            return no_update
-
-        @self.app.callback(
-            Output('define-section-cuts', 'children'),
-            [Input('define-section-cuts', 'value')],
-            suppress_callback_exceptions=True
-        )
-        def defineSectionCuts(tab):
-            if tab == 'define-section-cuts':
-                return self.defineSectionCut()
-            return no_update
+        # Tab Change callbacks
+        self.registerTabChangeCallbacks('visualize-section-cuts', self.visualizeSectionCut)
+        self.registerTabChangeCallbacks('define-section-cuts', self.defineSectionCut)
+        self.registerTabChangeCallbacks('visualize-drifts', self.visualizeGeneralizedDisp)
+        self.registerTabChangeCallbacks('define-drifts', self.defineGeneralizedDisp)
         
-        @self.app.callback(
-            Output('visualize-drifts', 'children'),
-            [Input('visualize-drifts', 'value')],
-            suppress_callback_exceptions=True
-        )
-        def visualizeDrifts(tab):
-            if tab == 'visualize-drifts':
-                return self.visualizeGeneralizedDisp()
-            return no_update
+        # Register callbacks for uploading file
+        self.registerUploadCallbacks('upload-sectioncut-data', 'Section Cut', self.updateFileUploadText)
+        self.registerUploadCallbacks('upload-height-data', 'Height Label', self.updateFileUploadText)
+        self.registerUploadCallbacks('upload-gendisp-group', 'Drift Group', self.updateFileUploadText)
         
-        @self.app.callback(
-            Output('define-drifts', 'children'),
-            [Input('define-drifts', 'value')],
-            suppress_callback_exceptions=True
-        )
-        def defineDrifts(tab):
-            if tab == 'define-drifts':
-                return self.defineGeneralizedDisp()
-            return no_update
-
-        #Update the Section Cut file
-        @self.app.callback(
-            Output('upload-data', 'children'),
-            Input('upload-data', 'contents'),
-            State('upload-data', 'filename'),
-            prevent_initial_call=True,
-            suppress_callback_exceptions=True
-        )
-        def updateCutFileName(contents, filename):
-            return self.updateFileUploadText(contents=contents, filename=filename, fileCategory='Section Cut')
-
-        # Update Group Information for Generalized Displacements
-        @self.app.callback(
-            Output('upload-gendisp-group', 'children'),
-            Input('upload-gendisp-group', 'contents'),
-            State('upload-gendisp-group', 'filename'),
-            prevent_initial_call=True,
-            suppress_callback_exceptions=True
-        )
-        def updateGenDispDefnFileName(contents, filename):
-            return self.updateFileUploadText(contents=contents, filename=filename, fileCategory='Drift Group')
         
         @self.app.callback(
             Output('download-GenDispDefn-excel', 'data'),
@@ -323,22 +274,17 @@ class GlobalAnalysisApp:
                 
             return no_update, no_update, no_update, no_update, no_update
 
-
-        #Update the Height Label file
-        self.app.callback(
-            Output('upload-height-data', 'children'),
-            Input('upload-height-data', 'contents'),
-            State('upload-height-data', 'filename'),
-            suppress_callback_exceptions=True
-        )(self.updateHeightFileUploadText)
-
         #Update the Load Case Names and Section Cut Names
-        self.app.callback(
+        @self.app.callback(
         [Output('load-case-name', 'data'),
         Output('cut-name-list', 'data')],
-        Input('upload-data', 'contents'),
+        Input('file-upload-status', 'data'),
         suppress_callback_exceptions=True
-        )(self.updateCutCaseName)
+        )
+        def updateSectionCut_NameCases(data):
+            if data and data['dataFileUploaded'] == 'Complete':
+                return self.updateCutCaseName(data)
+            return no_update, no_update
 
         # Clear the data
         self.app.callback(
@@ -379,18 +325,57 @@ class GlobalAnalysisApp:
             suppress_callback_exceptions=True
         )(self.plotData)
 
+    
+    def registerTabChangeCallbacks(self, componentID, callbackMethod):
+        @self.app.callback(
+            Output(componentID, 'children'),
+            [Input(componentID, 'value')],
+            suppress_callback_exceptions=True
+        )
+        def tabChange(tab):
+            if tab == componentID:
+                return callbackMethod()
+            return no_update
+    
+    def registerUploadCallbacks(self, componentID, fileCategory, callbackMethod):
+        @self.app.callback(
+            [Output('file-upload-status', 'data', allow_duplicate=True),
+            Output(componentID, 'children')],
+            [Input(componentID, 'contents'),
+            State(componentID, 'filename'),
+            Input('file-upload-status', 'data')],
+            prevent_initial_call=True,
+            suppress_callback_exceptions=True
+        )
+        def updateFileName(contents, filename, storedData):
+            return callbackMethod(contents=contents, filename=filename, 
+                                  fileCategory=fileCategory,storedData=storedData)
+    
+    
     def updateFileUploadText(self, **kwargs):
         contents = kwargs.get('contents')
         filename = kwargs.get('filename')
         fileCategory = kwargs.get('fileCategory')
+        storedData = kwargs.get('storedData')
         if contents is not None:
+            if storedData is None:
+                storedData = {}
             _, content_string = contents.split(',')
             decoded = base64.b64decode(content_string)
             file = io.BytesIO(decoded)
-            self.conn = connectDB(file)
-            return html.Div(['File ', html.B(html.A(filename, style = {'color':'blue'})), ' Uploaded. Drag/Drop/Select another file if desired.'])
+            if fileCategory in ['Section Cut', 'Drift Group']:
+                self.conn = connectDB(file)
+                storedData['dataFileUploaded'] = 'Complete'
+                    
+            else:
+                height_conn = connectDB(file)
+                query = 'SELECT FloorLabel as story, SAP2000Elev as height FROM "Floor Elevations"'        
+                self.height_data = getData(height_conn, query=query)
+                height_conn.close()
+                storedData['heightFileUploaded'] = 'Complete'
+            return storedData, html.Div(['File ', html.B(html.A(filename, style = {'color':'blue'})), ' Uploaded. Drag/Drop/Select another file if desired.'])
         else:
-            return html.Div([
+            return no_update, html.Div([
                 f'Drag and Drop the {fileCategory} File or ',
                 html.A('Select a File')
             ])
@@ -409,39 +394,21 @@ class GlobalAnalysisApp:
         processedData = output.getvalue()
         return processedData
 
-    def updateHeightFileUploadText(self, content, filename):
-        if content is not None:
-            _, content_string = content.split(',')
-            decoded = base64.b64decode(content_string)
-            file = io.BytesIO(decoded)
-            height_conn = connectDB(file)
-            query = 'SELECT FloorLabel as story, SAP2000Elev as height FROM "Floor Elevations"'        
-            self.height_data = getData(height_conn, query=query)
-            height_conn.close()
-            return html.Div(['File ', html.B(html.A(filename, style = {'color':'blue'})), ' Uploaded. Drag/Drop/Select another file if desired.'])
-        else:
-            return html.Div([
-                'Drag and Drop the Height Label File or ',
-                html.A('Select a File')
-            ])
-
-    def updateCutCaseName(self, content):
-        if not content:
+    def updateCutCaseName(self, contents):
+        if not contents:
             return [],[]
-        #_, content_string = content.split(',')
-        #decoded = base64.b64decode(content_string)
-        #file = io.BytesIO(decoded)
-        #self.conn = connectDB(file)
-        query = 'SELECT DISTINCT OutputCase FROM "Section Cut Forces - Analysis"'
-        data = getData(self.conn, query=query)
-        data = data['OutputCase'].tolist()
-        data.sort()
+        if self.conn is not None:
+            query = 'SELECT DISTINCT OutputCase FROM "Section Cut Forces - Analysis"'
+            data = getData(self.conn, query=query)
+            data = data['OutputCase'].tolist()
+            data.sort()
 
-        query = 'SELECT DISTINCT SectionCut FROM "Section Cut Forces - Analysis"'
-        cutNames = getData(self.conn, query=query)
-        cutGroups = getCutGroup(cutNames['SectionCut'].tolist())
-        cutGroups.sort()
-        return data, cutGroups
+            query = 'SELECT DISTINCT SectionCut FROM "Section Cut Forces - Analysis"'
+            cutNames = getData(self.conn, query=query)
+            cutGroups = getCutGroup(cutNames['SectionCut'].tolist())
+            cutGroups.sort()
+            return data, cutGroups
+        return [], []
 
     def updateAxis(self, shear_lims, axial_lims, moment_lims, torsion_lims, height_lims):
         for row in range(1, 3):
@@ -532,7 +499,7 @@ class GlobalAnalysisApp:
         if plotClicks:
             self.fig.data = []
             data = getCutForces(self.conn, cut_name_list, load_case_name)
-            colList = load_case_color.split(',') if load_case_color else [distinctipy.get_hex(col) for col in distinctipy.get_colors(len(load_case_name))]
+            colList = load_case_color.split(',') if load_case_color else ['red', 'blue', 'black']
             typeList = line_type_list.split(',') if line_type_list else ['solid', 'dash', 'dot', 'dashdot', 'longdash', 'longdashdot']
             loadLabel = load_case_label.split(',') if load_case_label else load_case_name
             loadType = load_case_type.split(',') if load_case_type else ['Others']*len(load_case_name)
@@ -582,7 +549,6 @@ class GlobalAnalysisApp:
     def plotCases(self, colList, typeList, cutI, cutName, cI, case, filtered_data, StepType, showLegend, SF=1.0, loadLabel = ''):
         if StepType is not None:
             filtered_data = filtered_data[filtered_data['StepType'] == StepType]
-        #print(filtered_data)
         if loadLabel+'_'+cutName in self.allLegendList or loadLabel == '':
             showLegend = False
         else:
