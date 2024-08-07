@@ -11,8 +11,9 @@ import plotly.io as pio
 import base64
 import io
 import os
-from utils.appComponents import createUploadComponent, createMultiSelectComponent, createTextInputComponent, createNumberInputComponent, createSelectComponent
+from utils.appComponents import createUploadComponent, createMultiSelectComponent, createTextInputComponent, createNumberInputComponent, createSelectComponent, createSingleNumberInputComponent
 from GeneralizedDisplacement.defineGenDisp import defineGenDisp
+from GeneralizedDisplacement.plotGenDisp import GeneralizedDisplacement
 
 
 class GlobalAnalysisApp:
@@ -201,17 +202,33 @@ class GlobalAnalysisApp:
         return dmc.MantineProvider(
             theme={"colorScheme": "light"},
             children=[
-                createUploadComponent('upload-gendisp-analysis', 'General Displacement Analysis File', 
+                createUploadComponent('vizGenDisp-upload-analysis', 'General Displacement Analysis File', 
                                       description='The file should contain the following tables: "Jt Displacements - Generalized", "Joint Coordinates", "Gen Displ Defs 1 - Translation"'),
-                createUploadComponent('upload-height-gendisp', 'Height Label',
+                createUploadComponent('vizGenDisp-upload-height', 'Height Label',
                                       description='The file should contain the following tables: "Floor Elevations"'),
                 dmc.Grid([
-                    createMultiSelectComponent('gm-list', 'Load Cases'),
-                    createMultiSelectComponent('grid-list', 'Grids'),
-                    createMultiSelectComponent('disp-list', 'Displacements'),
+                    createMultiSelectComponent('vizGenDip-GMlist', 'Load Cases'),
+                    createTextInputComponent('vizGenDip-case-color', 'Enter colors for Load Cases', 'Enter values, separated by commas', value=''),            
                 ]),
                 dmc.Grid([
-                    createTextInputComponent('case-color-genDisp', 'Enter colors for Load Cases', 'Enter values, separated by commas', value=''),
+                    createMultiSelectComponent('vizGenDip-grid-list', 'Grids'),
+                    createMultiSelectComponent('vizGenDip-disp-list', 'Displacements'),
+                ]),
+                dmc.Grid([
+                    createSingleNumberInputComponent(id='vizGenDip-DriftLim', value = 0.004, 
+                                                     label= 'Code Limit for Drift Plots',
+                                                     description='Enter drift limits per code'),
+                    createSingleNumberInputComponent(id='vizGenDip-DriftMax', value = 0.006, 
+                                                     label= 'Maximum Drift Plot Limit',
+                                                     description='Enter maximum plot value'),
+                ]),
+                dmc.Grid([
+                    createSingleNumberInputComponent(id='vizGenDip-HeightMin', value = 0.004, 
+                                                     label= 'Minimum Height Plot Limit',
+                                                     description='Enter minimum plot value'),
+                    createSingleNumberInputComponent(id='vizGenDip-HeightMax', value = 0.006, 
+                                                     label= 'Maximum Height Plot Limit',
+                                                     description='Enter maximum plot value'),
                 ]),
                 dmc.Group([
                 dmc.Button("Submit", id='submit-button-vizGenDisp', color="blue"),
@@ -232,6 +249,8 @@ class GlobalAnalysisApp:
         self.registerUploadCallbacks('upload-sectioncut-data', 'Section Cut', self.updateFileUploadText)
         self.registerUploadCallbacks('upload-height-data', 'Height Label', self.updateFileUploadText)
         self.registerUploadCallbacks('upload-gendisp-group', 'Drift Group', self.updateFileUploadText)
+        self.registerUploadCallbacks('vizGenDisp-upload-analysis', 'Generalized Displacement', self.updateFileUploadText)
+        self.registerUploadCallbacks('vizGenDisp-upload-height', 'Height Label', self.updateFileUploadText)
         
         
         @self.app.callback(
@@ -282,9 +301,27 @@ class GlobalAnalysisApp:
         suppress_callback_exceptions=True
         )
         def updateSectionCut_NameCases(data):
-            if data and data['dataFileUploaded'] == 'Complete':
+            if data and 'dataFileUploaded' in data.keys() and data['dataFileUploaded'] == 'Complete':
                 return self.updateCutCaseName(data)
             return no_update, no_update
+        
+        # Update load case names, grid names, displacements in Viz Generalized Disp
+        @self.app.callback(
+            [Output('vizGenDip-GMlist', 'data'),
+             Output('vizGenDip-grid-list', 'data'),
+             Output('vizGenDip-disp-list', 'data')],
+            [Input('file-upload-status', 'data'),
+             Input('vizGenDip-DriftLim', 'data'),
+             Input('vizGenDip-DriftMax', 'data'),
+             Input('vizGenDip-HeightMin', 'data'),
+             Input('vizGenDip-HeightMax', 'data')],
+            suppress_callback_exceptions=True
+        )
+        def updateCaseGridDisp_VizDisp(data, Dlim, Dmax, Hmin, Hmax):
+            print(data)
+            if data and 'dataFileUploaded' in data.keys() and 'heightFileUploaded' in data.keys() and data['dataFileUploaded'] == 'Complete' and data['heightFileUploaded'] == 'Complete':
+                return self.updateCaseGridDisp(Dlim, Dmax, Hmin, Hmax)
+            return no_update, no_update, no_update
 
         # Clear the data
         self.app.callback(
@@ -363,15 +400,14 @@ class GlobalAnalysisApp:
             _, content_string = contents.split(',')
             decoded = base64.b64decode(content_string)
             file = io.BytesIO(decoded)
-            if fileCategory in ['Section Cut', 'Drift Group']:
+            if fileCategory in ['Section Cut', 'Drift Group','Generalized Displacement']:
                 self.conn = connectDB(file)
                 storedData['dataFileUploaded'] = 'Complete'
                     
             else:
-                height_conn = connectDB(file)
+                self.height_conn = connectDB(file)
                 query = 'SELECT FloorLabel as story, SAP2000Elev as height FROM "Floor Elevations"'        
-                self.height_data = getData(height_conn, query=query)
-                height_conn.close()
+                self.height_data = getData(self.height_conn, query=query)
                 storedData['heightFileUploaded'] = 'Complete'
             return storedData, html.Div(['File ', html.B(html.A(filename, style = {'color':'blue'})), ' Uploaded. Drag/Drop/Select another file if desired.'])
         else:
@@ -393,6 +429,16 @@ class GlobalAnalysisApp:
         writer.close()
         processedData = output.getvalue()
         return processedData
+    
+    def updateCaseGridDisp(self, Dlim, Dmax, Hmin, Hmax):
+        if self.conn is not None:
+            self.genDisp = GeneralizedDisplacement(analysisFileConnection = self.conn,
+                                                   heightFileConnection = self.height_conn,
+                                                   Dlim = Dlim, Dmax=Dmax, 
+                                                   Hmin=Hmin, Hmax=Hmax)
+            return self.genDisp.populateFields()
+        return [], [], []
+
 
     def updateCutCaseName(self, contents):
         if not contents:

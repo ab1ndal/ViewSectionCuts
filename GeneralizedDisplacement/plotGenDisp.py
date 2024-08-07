@@ -31,17 +31,18 @@ class GeneralizedDisplacement:
         if 'heightFileConnection' in kwargs:
             self.heightConnection = kwargs['heightFileConnection']
 
+        self.compiledData = None
+        self.assignDriftLimit(Dlim = kwargs['Dlim'], Dmax = kwargs['Dmax'])
+        self.assignHeightLimits(Hmin = kwargs['Hmin'], Hmax = kwargs['Hmax'])
+
+    def populateFields(self):
+        self.readMainFile()
         self.GMList = self.getGMList()
         self.GridList = self.getGridList()
         self.DispList = self.getDispList()
+        return self.GMList, self.GridList, self.DispList
 
-        self.readAnalysisFile()
-        self.readHeightFile()
-        self.assignDriftLimit()
-        self.assignHeightLimits()
-        self.compiledData = None
-
-    def readAnalysisFile(self):
+    def readMainFile(self):
         #self.connection = connectDB(self.analysisFile)
         query = f"""
         SELECT GenDispl, OutputCase, max(abs(Translation)) as Disp
@@ -50,6 +51,9 @@ class GeneralizedDisplacement:
         """
         #connection = connectDB(inputFile)
         self.dispData = getData(self.connection, query=query)
+
+
+    def readDefinitionFile(self):
         self.jointData = getData(self.connection, query='SELECT Joint, Z FROM "Joint Coordinates"')
         self.genDispDefn = getData(self.connection, query='SELECT GenDispl, Joint, U1SF, U2SF FROM "Gen Displ Defs 1 - Translation"')
         self.genDispDefn['Loc'] = self.genDispDefn['U1SF'] + self.genDispDefn['U2SF']
@@ -60,13 +64,13 @@ class GeneralizedDisplacement:
         self.heightData = getData(self.heightConnection, tableName='Floor Elevations')
 
     def getGMList(self):
-        return self.dispData['OutputCase'].unique()
+        return sorted(self.dispData['OutputCase'].unique().tolist())
     
     def getGridList(self):
-        return self.dispData['GenDispl'].str.split('_').str[0].unique()
+        return sorted(self.dispData['GenDispl'].str.split('_').str[0].unique().tolist())
     
     def getDispList(self):
-        return self.dispData['GenDispl'].str.split('_').str[2].unique()
+        return sorted(self.dispData['GenDispl'].str.split('_').str[2].unique().tolist())
 
     def assignDriftLimit(self, Dlim=0.004, Dmax=0.006):
         self.Dlim = Dlim
@@ -154,13 +158,13 @@ class GeneralizedDisplacement:
 
 if __name__ == '__main__':
     #################################### USER INPUT ####################################
-    inputFileLoc = r"C:\\Users\\abindal\\OneDrive - Nabih Youssef & Associates\\Documents\\00_Projects\\06_The Vault\\20240715 Models\\305\\try\\"
-    inputFile = inputFileLoc + "\\20240715_GenDispForces_305_Seq.xlsx"
+    inputFileLoc = r"C:\\Users\\abindal\\OneDrive - Nabih Youssef & Associates\\Documents\\00_Projects\\06_The Vault\\20240715 Models\\205 Static\\"
+    inputFile = inputFileLoc + "\\205_Static_Building Responses.xlsx"
     heightFile = inputFileLoc + '\\FloorElevations.xlsx'
 
-    gridList = ['S12A', 'S12B', 'S12C', 'S12D', 'S12', 
-            'S13A', 'S13B', 'S13C', 'S13D', 'S13E',
-            'S13F', 'S13G', 'S13H', 'S13J', 'S13K']
+    gridList = ['N12A', 'N12B', 'N12C', 'N12D', 'N12', 
+            'N13A', 'N13B', 'N13C', 'N13D', 'N13E',
+            'N13F', 'N13G', 'N13H']
     GMList = ['SLE - 2% Damped - U1', 'SLE - 2% Damped - U2']
     dispList = ['U1', 'U2']
     LABEL_LEGEND_FONT_SIZE = 8
@@ -169,6 +173,10 @@ if __name__ == '__main__':
     if not os.path.exists(inputFileLoc + f'\\DRIFTS'):
         os.makedirs(inputFileLoc + f'\\DRIFTS')
 
-    genDisp = GeneralizedDisplacement(inputFile, heightFile)
+    genDisp = GeneralizedDisplacement(analysisFile=inputFile, heightFile=heightFile, 
+                                      Dlim = 0.004, Dmax = 0.005, Hmin=-60.365, Hmax=29.835)
+    genDisp.readMainFile()
+    genDisp.readDefinitionFile()
+    genDisp.readHeightFile()
     genDisp.plotData(gridList, GMList, dispList)               
    

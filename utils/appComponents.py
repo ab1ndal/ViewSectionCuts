@@ -100,3 +100,28 @@ def createNumberInputComponent(labelPrefix, minValue, maxValue, stepValue, unit)
                 dmc.NumberInput(min=-1e8, max=1e8,precision=3,label=f'{labelPrefix} - Step Size ({unit})', id=f'{labelPrefix.lower()}-step', w=300, value=stepValue),
             ], span=4),
         ])
+
+def createSingleNumberInputComponent(**kwargs):
+    value = None
+    label = None
+    placeholder = None
+    description = None
+    if 'value' in kwargs:
+        value = kwargs['value']
+    if 'id' in kwargs:
+        id = kwargs['id']
+    if 'label' in kwargs:
+        label = kwargs['label']
+    if 'placeholder' in kwargs and 'value' not in kwargs:
+        placeholder = kwargs['placeholder']
+    if 'description' in kwargs:
+        description = kwargs['description']
+    return dmc.Col([
+                dmc.NumberInput(min=-1e8, max=1e8,precision=3,
+                                label=label, 
+                                id=id, 
+                                w=300, 
+                                value=value,
+                                placeholder=placeholder,
+                                description=description),
+        ], span=4)
