@@ -87,17 +87,34 @@ def createTextInputComponent(idName, label, description, **kwargs):
                         placeholder=placeholder,
                         value=value),
             ], span=4)
+
+def createRadioComponent(idName, **kwargs):
+    values = kwargs.get('values')
+    if not values:
+        values = []
+    
+    return dmc.Grid([
+        dmc.Col([
+                    dmc.RadioGroup(
+                        children = dmc.Group([dmc.Radio(label=value, value=value) for value in values]),
+                    label=f'Aggregation Type',
+                    w = 300,
+                    value = "Individual",
+                    id=idName,
+                    size = 'sm',
+                    mb = 2)
+    ], span=4)])
         
 def createNumberInputComponent(labelPrefix, minValue, maxValue, stepValue, unit):
     return dmc.Grid([
             dmc.Col([
-                dmc.NumberInput(min=-1e8, max=1e8,precision=3,label=f'{labelPrefix} - Minimum ({unit})', id=f'{labelPrefix.lower()}-min', w=300, value=minValue),
+                dmc.NumberInput(min=-1e10, max=1e10,precision=3,label=f'{labelPrefix} - Minimum ({unit})', id=f'{labelPrefix.lower()}-min', w=300, value=minValue),
             ], span=4),
             dmc.Col([
-                dmc.NumberInput(min=-1e8, max=1e8,precision=3,label=f'{labelPrefix} - Maximum ({unit})', id=f'{labelPrefix.lower()}-max', w=300, value=maxValue),
+                dmc.NumberInput(min=-1e10, max=1e10,precision=3,label=f'{labelPrefix} - Maximum ({unit})', id=f'{labelPrefix.lower()}-max', w=300, value=maxValue),
             ], span=4),
             dmc.Col([
-                dmc.NumberInput(min=-1e8, max=1e8,precision=3,label=f'{labelPrefix} - Step Size ({unit})', id=f'{labelPrefix.lower()}-step', w=300, value=stepValue),
+                dmc.NumberInput(min=-1e10, max=1e10,precision=3,label=f'{labelPrefix} - Step Size ({unit})', id=f'{labelPrefix.lower()}-step', w=300, value=stepValue),
             ], span=4),
         ])
 
@@ -117,7 +134,7 @@ def createSingleNumberInputComponent(**kwargs):
     if 'description' in kwargs:
         description = kwargs['description']
     return dmc.Col([
-                dmc.NumberInput(min=-1e8, max=1e8,precision=3,
+                dmc.NumberInput(min=-1e10, max=1e10,precision=3,
                                 label=label, 
                                 id=id, 
                                 w=300, 

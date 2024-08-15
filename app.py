@@ -11,7 +11,7 @@ import plotly.io as pio
 import base64
 import io
 import os
-from utils.appComponents import createUploadComponent, createMultiSelectComponent, createTextInputComponent, createNumberInputComponent, createSelectComponent, createSingleNumberInputComponent
+from utils.appComponents import createUploadComponent, createMultiSelectComponent, createTextInputComponent, createNumberInputComponent, createSelectComponent, createSingleNumberInputComponent, createRadioComponent
 from GeneralizedDisplacement.defineGenDisp import defineGenDisp
 from GeneralizedDisplacement.plotGenDisp import GeneralizedDisplacement
 
@@ -126,6 +126,8 @@ class GlobalAnalysisApp:
                     createTextInputComponent('load-case-labels', 'Enter the labels for Load Cases', 'Enter Load Case labels, separated by commas', value=''),
 
                 ]),
+                createRadioComponent(idName='sectionCut-agg-type', values = ['Individual', 'Average', 'Min', 'Max']),
+
                 dmc.TextInput(label='Enter the title for the plots',
                         w = 300,
                         id='plot-title'),
@@ -357,7 +359,8 @@ class GlobalAnalysisApp:
             [State('axial-min', 'value'),State('axial-max', 'value'),State('axial-step', 'value')],
             [State('moment-min', 'value'),State('moment-max', 'value'),State('moment-step', 'value')],
             [State('torsion-min', 'value'),State('torsion-max', 'value'),State('torsion-step', 'value')],
-            [State('height-min', 'value'),State('height-max', 'value'),State('height-step', 'value')]],
+            [State('height-min', 'value'),State('height-max', 'value'),State('height-step', 'value')],
+            State('sectionCut-agg-type', 'value')],
             prevent_initial_call=True,
             suppress_callback_exceptions=True
         )(self.plotData)
@@ -541,18 +544,42 @@ class GlobalAnalysisApp:
             self.fig.data = []
             return [], self.fig
     
-    def plotData(self, plotClicks, cut_name_list, line_type_list, load_case_name, load_case_color, load_case_label, load_case_type, plot_title, shear_lims, axial_lims, moment_lims, torsion_lims, height_lims):
+    def plotData(self, plotClicks, cut_name_list, line_type_list, load_case_name, load_case_color, load_case_label, load_case_type, plot_title, shear_lims, axial_lims, moment_lims, torsion_lims, height_lims, agg_type):
         if plotClicks:
             self.fig.data = []
             data = getCutForces(self.conn, cut_name_list, load_case_name)
-            colList = load_case_color.split(',') if load_case_color else ['red', 'blue', 'black']
+            def rgb2hex(color):
+                return "#{:02x}{:02x}{:02x}".format(int(color[0]*255),int(color[1]*255),int(color[2]*255))
+            
+            defaultColor = [rgb2hex(color) for color in distinctipy.get_colors(len(load_case_name),[(1,1,1)])]
+            colList = load_case_color.split(',') if load_case_color else defaultColor
+
+            
             typeList = line_type_list.split(',') if line_type_list else ['solid', 'dash', 'dot', 'dashdot', 'longdash', 'longdashdot']
             loadLabel = load_case_label.split(',') if load_case_label else load_case_name
             loadType = load_case_type.split(',') if load_case_type else ['Others']*len(load_case_name)
             self.allLegendList = []
 
+            for Li, lType in enumerate(loadType):
+                if lType == 'TH' and agg_type != 'Individual':
+                    colList[Li] = '#D3D3D3'
+
 
             for cutI, cutName in enumerate(cut_name_list):
+                # For each cutName in the list find average for all load case name
+                dataCut = data[data['SectionCut'].str.startswith(cutName)].reset_index(drop=True)
+                aggCaseList = []
+                print(load_case_name)
+                for i, case in enumerate(load_case_name):
+                    if loadType[i] == 'TH':
+                        aggCaseList.append(case)
+                dataCutCase = dataCut[dataCut['OutputCase'].isin(aggCaseList)].reset_index(drop=True)
+                dataCutCase = dataCutCase.drop(columns=['OutputCase', 'SectionCut'])
+                if agg_type == 'Average':
+                    avgData = dataCutCase.groupby(['CutHeight', 'StepType']).mean().reset_index()
+                if agg_type == 'Min' or agg_type == 'Max':
+                    maxData = dataCutCase.groupby(['CutHeight', 'StepType']).max().reset_index()
+                    minData = dataCutCase.groupby(['CutHeight', 'StepType']).min().reset_index()
                 for cI, case in enumerate(load_case_name):
                     filtered_data = data[(data['OutputCase'] == case) & (data['SectionCut'].str.startswith(cutName))]
                     if loadType[cI] == 'Lin':
@@ -560,9 +587,22 @@ class GlobalAnalysisApp:
                     elif loadType[cI] == 'RS':
                         self.plotCases(colList, typeList, cutI, cutName, cI, case, filtered_data, 'Max', True, SF = 1.0, loadLabel = loadLabel[cI])
                         self.plotCases(colList, typeList, cutI, cutName, cI, case, filtered_data, 'Max', False, SF = -1.0, loadLabel = loadLabel[cI])
-                    else:
+                    elif loadType[cI] == 'Others':
                         self.plotCases(colList, typeList, cutI, cutName, cI, case, filtered_data, 'Max', True, SF = 1.0, loadLabel = loadLabel[cI])
                         self.plotCases(colList, typeList, cutI, cutName, cI, case, filtered_data, 'Min', False, SF = 1.0, loadLabel = loadLabel[cI])
+                    elif loadType[cI] == 'TH':
+                        showLabel = True if agg_type == 'Individual' else False
+                        self.plotCases(colList, typeList, cutI, cutName, cI, case, filtered_data, 'Max', showLabel, SF = 1.0, loadLabel = loadLabel[cI])
+                        self.plotCases(colList, typeList, cutI, cutName, cI, case, filtered_data, 'Min', False, SF = 1.0, loadLabel = loadLabel[cI])
+                if agg_type == 'Average':
+                    self.plotCases(['black'], typeList, cutI, cutName, cI, case, avgData, 'Max', True, SF = 1.0, loadLabel = 'Average MCE')
+                    self.plotCases(['black'], typeList, cutI, cutName, cI, case, avgData, 'Min', False, SF = 1.0, loadLabel = 'Average MCE')
+                if agg_type == 'Min':
+                    self.plotCases(['black'], typeList, cutI, cutName, cI, case, minData, 'Max', True, SF = 1.0, loadLabel = 'Min Envelop MCE')
+                    self.plotCases(['black'], typeList, cutI, cutName, cI, case, maxData, 'Min', False, SF = 1.0, loadLabel = 'Min Envelop MCE')
+                if agg_type == 'Max':
+                    self.plotCases(['black'], typeList, cutI, cutName, cI, case, maxData, 'Max', True, SF = 1.0, loadLabel = 'Max Envelop MCE')
+                    self.plotCases(['black'], typeList, cutI, cutName, cI, case, minData, 'Min', False, SF = 1.0, loadLabel = 'Max Envelop MCE')
 
             self.fig.update_layout(
                         title={
@@ -592,7 +632,7 @@ class GlobalAnalysisApp:
     def runApp(self):
         self.app.run_server(debug=True, port = self.port)     
 
-    def plotCases(self, colList, typeList, cutI, cutName, cI, case, filtered_data, StepType, showLegend, SF=1.0, loadLabel = ''):
+    def plotCases(self, colList, typeList, cutI, cutName, cI, case, filtered_data, StepType, showLegend, SF=1.0, loadLabel = '', agg_type = 'Individual'):
         if StepType is not None:
             filtered_data = filtered_data[filtered_data['StepType'] == StepType]
         if loadLabel+'_'+cutName in self.allLegendList or loadLabel == '':
