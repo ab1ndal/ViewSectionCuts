@@ -118,12 +118,12 @@ class GlobalAnalysisApp:
                 dmc.Grid([
                     createMultiSelectComponent('cut-name-list', 'Cuts'),
                     createTextInputComponent('line-type-list', 'Enter the line types for Cuts', 'Enter line types, separated by commas', value='solid'),
-                    createTextInputComponent('load-case-types', 'Enter the Load Case type (Lin, RS, Others)', 'Enter Load Case types, separated by commas', value=''),
+                    createTextInputComponent('load-case-types', 'Enter the Load Case type (Lin, NonLin, RS, TH)', 'Enter Load Case types, separated by commas', value=''),
                 ]),
                 dmc.Grid([
                     createMultiSelectComponent('load-case-name', 'Load Cases'),
                     createTextInputComponent('load-case-colors', 'Enter the colors for Load Cases', 'Enter Load Case colors, separated by commas', value='red,blue,black'),
-                    createTextInputComponent('load-case-labels', 'Enter the labels for Load Cases', 'Enter Load Case labels, separated by commas', value=''),
+                    createTextInputComponent('load-case-labels', 'Enter the labels for Load Cases', 'Enter Load Case labels, separated by commas', value='', placeholder = 'Leave black for aggregation'),
 
                 ]),
                 createRadioComponent(idName='sectionCut-agg-type', values = ['Individual', 'Average', 'Min', 'Max']),
@@ -303,7 +303,7 @@ class GlobalAnalysisApp:
         suppress_callback_exceptions=True
         )
         def updateSectionCut_NameCases(data):
-            if data and 'dataFileUploaded' in data.keys() and data['dataFileUploaded'] == 'Complete':
+            if data and 'SectionCutDataFileUploaded' in data.keys() and data['SectionCutDataFileUploaded'] == 'Complete':
                 return self.updateCutCaseName(data)
             return no_update, no_update
         
@@ -320,8 +320,7 @@ class GlobalAnalysisApp:
             suppress_callback_exceptions=True
         )
         def updateCaseGridDisp_VizDisp(data, Dlim, Dmax, Hmin, Hmax):
-            print(data)
-            if data and 'dataFileUploaded' in data.keys() and 'heightFileUploaded' in data.keys() and data['dataFileUploaded'] == 'Complete' and data['heightFileUploaded'] == 'Complete':
+            if data and 'vizDataFileUploaded' in data.keys() and 'heightFileUploaded' in data.keys() and data['vizDataFileUploaded'] == 'Complete' and data['heightFileUploaded'] == 'Complete':
                 return self.updateCaseGridDisp(Dlim, Dmax, Hmin, Hmax)
             return no_update, no_update, no_update
 
@@ -405,7 +404,12 @@ class GlobalAnalysisApp:
             file = io.BytesIO(decoded)
             if fileCategory in ['Section Cut', 'Drift Group','Generalized Displacement']:
                 self.conn = connectDB(file)
-                storedData['dataFileUploaded'] = 'Complete'
+                if fileCategory == 'Section Cut':
+                    storedData['SectionCutDataFileUploaded'] = 'Complete'
+                elif fileCategory == 'Drift Group':
+                    storedData['DriftGroupFileUploaded'] = 'Complete'
+                elif fileCategory == 'Generalized Displacement':
+                    storedData['vizDataFileUploaded'] = 'Complete'
                     
             else:
                 self.height_conn = connectDB(file)
@@ -557,7 +561,7 @@ class GlobalAnalysisApp:
             
             typeList = line_type_list.split(',') if line_type_list else ['solid', 'dash', 'dot', 'dashdot', 'longdash', 'longdashdot']
             loadLabel = load_case_label.split(',') if load_case_label else load_case_name
-            loadType = load_case_type.split(',') if load_case_type else ['Others']*len(load_case_name)
+            loadType = load_case_type.split(',') if load_case_type else ['NonLin']*len(load_case_name)
             self.allLegendList = []
 
             for Li, lType in enumerate(loadType):
@@ -569,7 +573,6 @@ class GlobalAnalysisApp:
                 # For each cutName in the list find average for all load case name
                 dataCut = data[data['SectionCut'].str.startswith(cutName)].reset_index(drop=True)
                 aggCaseList = []
-                print(load_case_name)
                 for i, case in enumerate(load_case_name):
                     if loadType[i] == 'TH':
                         aggCaseList.append(case)
@@ -587,7 +590,7 @@ class GlobalAnalysisApp:
                     elif loadType[cI] == 'RS':
                         self.plotCases(colList, typeList, cutI, cutName, cI, case, filtered_data, 'Max', True, SF = 1.0, loadLabel = loadLabel[cI])
                         self.plotCases(colList, typeList, cutI, cutName, cI, case, filtered_data, 'Max', False, SF = -1.0, loadLabel = loadLabel[cI])
-                    elif loadType[cI] == 'Others':
+                    elif loadType[cI] == 'NonLin':
                         self.plotCases(colList, typeList, cutI, cutName, cI, case, filtered_data, 'Max', True, SF = 1.0, loadLabel = loadLabel[cI])
                         self.plotCases(colList, typeList, cutI, cutName, cI, case, filtered_data, 'Min', False, SF = 1.0, loadLabel = loadLabel[cI])
                     elif loadType[cI] == 'TH':
@@ -598,11 +601,11 @@ class GlobalAnalysisApp:
                     self.plotCases(['black'], typeList, cutI, cutName, cI, case, avgData, 'Max', True, SF = 1.0, loadLabel = 'Average MCE')
                     self.plotCases(['black'], typeList, cutI, cutName, cI, case, avgData, 'Min', False, SF = 1.0, loadLabel = 'Average MCE')
                 if agg_type == 'Min':
-                    self.plotCases(['black'], typeList, cutI, cutName, cI, case, minData, 'Max', True, SF = 1.0, loadLabel = 'Min Envelop MCE')
-                    self.plotCases(['black'], typeList, cutI, cutName, cI, case, maxData, 'Min', False, SF = 1.0, loadLabel = 'Min Envelop MCE')
+                    self.plotCases(['black'], typeList, cutI, cutName, cI, case, minData, 'Max', True, SF = 1.0, loadLabel = 'Min MCE')
+                    self.plotCases(['black'], typeList, cutI, cutName, cI, case, maxData, 'Min', False, SF = 1.0, loadLabel = 'Min MCE')
                 if agg_type == 'Max':
-                    self.plotCases(['black'], typeList, cutI, cutName, cI, case, maxData, 'Max', True, SF = 1.0, loadLabel = 'Max Envelop MCE')
-                    self.plotCases(['black'], typeList, cutI, cutName, cI, case, minData, 'Min', False, SF = 1.0, loadLabel = 'Max Envelop MCE')
+                    self.plotCases(['black'], typeList, cutI, cutName, cI, case, maxData, 'Max', True, SF = 1.0, loadLabel = 'Max MCE')
+                    self.plotCases(['black'], typeList, cutI, cutName, cI, case, minData, 'Min', False, SF = 1.0, loadLabel = 'Max MCE')
 
             self.fig.update_layout(
                         title={
