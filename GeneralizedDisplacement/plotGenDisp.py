@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import distinctipy
+import time
 
 # To run please run "python -m GeneralizedDisplacement.plotGenDisp" from the main folder
 
@@ -87,30 +88,53 @@ class GeneralizedDisplacement:
         jointData = self.jointData
         if colList is None:
             colList = distinctipy.get_colors(len(GMList))
+        query = f"""
+        SELECT GenDispl, genDispDefn.Joint, cast(Z as float) as Z
+        FROM genDispDefn
+        INNER JOIN jointData
+        ON genDispDefn.Joint = jointData.Joint
+        WHERE Loc = 1
+        """
+        topJoint = ps.sqldf(query, locals())
+        query = f"""
+        SELECT GenDispl, genDispDefn.Joint, cast(Z as float) as Z
+        FROM genDispDefn
+        INNER JOIN jointData
+        ON genDispDefn.Joint = jointData.Joint
+        WHERE Loc = -1
+        """
+        botJoint = ps.sqldf(query, locals())
+
         for g in gridList:
             for gm_i, gm in enumerate(GMList):
                 for d_i, d in enumerate(dispList):
+                    print(g, gm, d)
+                    t1 = time.time()
                     condition1 = self.dispData['GenDispl'].str.contains(g+"_")
                     condition2 = self.dispData['OutputCase'] == gm
                     condition3 = self.dispData['GenDispl'].str.contains(d)
                     selGrid = self.dispData[condition1 & condition2 & condition3].reset_index(drop=True)
+                    t2 = time.time()
+                    print(f'Selection Time: {t2-t1}')
                     query = f"""
-                    SELECT selGrid.GenDispl, OutputCase, Disp, Gen1.Joint as TopJoint, CAST(J1.Z AS FLOAT) as TopZ, Gen2.Joint as BotJoint, CAST(J2.Z AS FLOAT) as BotZ
+                    SELECT selGrid.GenDispl, OutputCase, Disp, topJoint.Joint as TopJoint,topJoint.Z as TopZ, botJoint.Joint as BotJoint, botJoint.Z as BotZ
                     FROM selGrid
-                    INNER JOIN genDispDefn as Gen1
-                    ON selGrid.GenDispl = Gen1.GenDispl AND Gen1.Loc = 1
-                    INNER JOIN genDispDefn as Gen2
-                    ON selGrid.GenDispl = Gen2.GenDispl AND Gen2.Loc = -1
-                    INNER JOIN jointData as J1
-                    ON Gen1.Joint = J1.Joint
-                    INNER JOIN jointData as J2
-                    ON Gen2.Joint = J2.Joint
+                    JOIN topJoint
+                    ON selGrid.GenDispl = topJoint.GenDispl
+                    JOIN botJoint
+                    ON selGrid.GenDispl = botJoint.GenDispl
                     """
                     finalData = ps.sqldf(query, locals())
-                    finalData['Drift'] = finalData['Disp']/(finalData['TopZ'] - finalData['BotZ'])
-                    self.compiledData = cleanDB(self.compiledData)
-                    finalData = cleanDB(finalData)
+                    t3 = time.time()
+                    print(f'Join Time: {t3-t2}')
+                    finalData['Drift'] = abs(finalData['Disp']/(finalData['TopZ'] - finalData['BotZ']))
+                    t4 = time.time()
+                    print(f'Drift Time: {t4-t3}')
+                    #self.compiledData = cleanDB(self.compiledData)
+                    #finalData = cleanDB(finalData)
                     self.compiledData = pd.concat([self.compiledData, finalData], ignore_index=True)
+                    t5 = time.time()
+                    print(f'Concat Time: {t5-t4}')
         return self.compiledData
     
     def plotData(self, gridList, GMList, dispList, colList=['#1f77b4','#ff7f0e']):
@@ -125,7 +149,6 @@ class GeneralizedDisplacement:
             fig, ax = plt.subplots(1,len(dispList), figsize=(5*len(dispList),5))
             for d_i, d in enumerate(dispList):
                 ax[d_i].set_title(f'{g} - {d}')
-                
                 for gm_i, gm in enumerate(GMList):
                     condition1 = self.compiledData['GenDispl'].str.contains(g+"_")
                     condition2 = self.compiledData['OutputCase'] == gm
@@ -158,14 +181,20 @@ class GeneralizedDisplacement:
 
 if __name__ == '__main__':
     #################################### USER INPUT ####################################
-    inputFileLoc = r"C:\\Users\\abindal\\OneDrive - Nabih Youssef & Associates\\Documents\\00_Projects\\06_The Vault\\20240715 Models\\205 Static\\"
-    inputFile = inputFileLoc + "\\205_Static_Building Responses.xlsx"
+    inputFileLoc = r"C:\\Users\\abindal\\OneDrive - Nabih Youssef & Associates\\Documents\\00_Projects\\06_The Vault\\20240715 Models\\20240812_305\\"
+    inputFile = inputFileLoc + "\\305_Dyn_Building Responses.xlsx"
     heightFile = inputFileLoc + '\\FloorElevations.xlsx'
 
     gridList = ['N12A', 'N12B', 'N12C', 'N12D', 'N12', 
             'N13A', 'N13B', 'N13C', 'N13D', 'N13E',
             'N13F', 'N13G', 'N13H']
     GMList = ['SLE - 2% Damped - U1', 'SLE - 2% Damped - U2']
+
+    gridList = ['S12A', 'S12B', 'S12C', 'S12D', 'S12', 
+            'S13A', 'S13B', 'S13C', 'S13D', 'S13E',
+            'S13F', 'S13G', 'S13H', 'S13J', 'S13K']
+    GMList = ['Absolute Avg']
+
     dispList = ['U1', 'U2']
     LABEL_LEGEND_FONT_SIZE = 8
     ####################################################################################
@@ -174,7 +203,8 @@ if __name__ == '__main__':
         os.makedirs(inputFileLoc + f'\\DRIFTS')
 
     genDisp = GeneralizedDisplacement(analysisFile=inputFile, heightFile=heightFile, 
-                                      Dlim = 0.004, Dmax = 0.005, Hmin=-60.365, Hmax=29.835)
+                                      Dlim = 0.004, Dmax = 0.01, 
+                                      Hmin=-60.365, Hmax=29.835)
     genDisp.readMainFile()
     genDisp.readDefinitionFile()
     genDisp.readHeightFile()
