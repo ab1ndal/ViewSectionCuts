@@ -26,7 +26,7 @@ def getCutForces(connection, cutNameList, loadCaseName):
     whereClauses = []
     if cutNameList:
         joinString = 'SectionCut LIKE '
-        whereClauses.append('(' + ' OR '.join([joinString + f"'{cut}%'" for cut in cutNameList]) + ')')
+        whereClauses.append('(' + ' OR '.join([joinString + f"'{cut} - %'" for cut in cutNameList]) + ')')
     if loadCaseName:
         joinString = 'OutputCase = '
         whereClauses.append('(' + ' OR '.join([joinString + f"'{load}'" for load in loadCaseName]) + ')')

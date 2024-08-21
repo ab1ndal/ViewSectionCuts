@@ -163,7 +163,7 @@ class GeneralizedDisplacement:
     
     def formataxis(self, ax):
         ax.set_xlim(0, self.Dmax)
-        ax.set_ylim(self.Hmin, self.Hmax)
+        
         ax.vlines(self.Dlim, self.Hmin, self.Hmax, linestyle='--', color = 'red', linewidth=1.5, label='SLE Limit')
         ax.set_xticks(np.arange(0, self.Dmax+0.001, 0.001))
         ax.set_xticklabels(['{:.1f}%'.format(x*100) for x in ax.get_xticks()], fontsize=LABEL_LEGEND_FONT_SIZE)
@@ -177,23 +177,25 @@ class GeneralizedDisplacement:
         secax_y.set_yticks(self.heightData['SAP2000Elev'])
         secax_y.set_yticklabels([int(round(x,0)) for x in self.heightData['SAP2000Elev']], fontsize=LABEL_LEGEND_FONT_SIZE)
         secax_y.set_ylabel('Height (m)')
+        ax.set_ylim(self.Hmin, self.Hmax)
         return ax
 
 if __name__ == '__main__':
     #################################### USER INPUT ####################################
-    inputFileLoc = r"C:\\Users\\abindal\\OneDrive - Nabih Youssef & Associates\\Documents\\00_Projects\\06_The Vault\\20240715 Models\\20240812_305\\"
-    inputFile = inputFileLoc + "\\305_Dyn_Building Responses.xlsx"
+    inputFileLoc = r"C:\\Users\\abindal\\OneDrive - Nabih Youssef & Associates\\Documents\\00_Projects\\06_The Vault\\20240715 Models\\20240814_302\\"
+    inputFile = inputFileLoc + "\\20240821_ResponseSpectrum.xlsx"
     heightFile = inputFileLoc + '\\FloorElevations.xlsx'
 
-    gridList = ['N12A', 'N12B', 'N12C', 'N12D', 'N12', 
-            'N13A', 'N13B', 'N13C', 'N13D', 'N13E',
-            'N13F', 'N13G', 'N13H']
+    #gridList = ['N12A', 'N12B', 'N12C', 'N12D', 'N12', 
+    #        'N13A', 'N13B', 'N13C', 'N13D', 'N13E',
+    #        'N13F', 'N13G', 'N13H']
     GMList = ['SLE - 2% Damped - U1', 'SLE - 2% Damped - U2']
 
-    gridList = ['S12A', 'S12B', 'S12C', 'S12D', 'S12', 
-            'S13A', 'S13B', 'S13C', 'S13D', 'S13E',
-            'S13F', 'S13G', 'S13H', 'S13J', 'S13K']
-    GMList = ['Absolute Avg']
+    #gridList = ['S12A', 'S12B', 'S12C', 'S12D', 'S12', 
+    #        'S13A', 'S13B', 'S13C', 'S13D', 'S13E',
+    #        'S13F', 'S13G', 'S13H', 'S13J', 'S13K']
+    #GMList = ['Absolute Avg']
+    gridList = ['S2', 'S3A', 'S3B', 'S3C', 'S3D', 'S3', 'S4A', 'S4B', 'S4C', 'S4D', 'S4', 'S5A', 'S5B', 'S5C', 'S5D', 'S5.1', 'S5.2']
 
     dispList = ['U1', 'U2']
     LABEL_LEGEND_FONT_SIZE = 8
@@ -203,8 +205,8 @@ if __name__ == '__main__':
         os.makedirs(inputFileLoc + f'\\DRIFTS')
 
     genDisp = GeneralizedDisplacement(analysisFile=inputFile, heightFile=heightFile, 
-                                      Dlim = 0.004, Dmax = 0.01, 
-                                      Hmin=-60.365, Hmax=29.835)
+                                      Dlim = 0.004, Dmax = 0.005, 
+                                      Hmin=-22.965, Hmax=126.635)
     genDisp.readMainFile()
     genDisp.readDefinitionFile()
     genDisp.readHeightFile()

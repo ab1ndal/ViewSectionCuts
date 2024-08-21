@@ -225,10 +225,10 @@ class GlobalAnalysisApp:
                                                      description='Enter maximum plot value'),
                 ]),
                 dmc.Grid([
-                    createSingleNumberInputComponent(id='vizGenDip-HeightMin', value = 0.004, 
+                    createSingleNumberInputComponent(id='vizGenDip-HeightMin', value = -22.965, 
                                                      label= 'Minimum Height Plot Limit',
                                                      description='Enter minimum plot value'),
-                    createSingleNumberInputComponent(id='vizGenDip-HeightMax', value = 0.006, 
+                    createSingleNumberInputComponent(id='vizGenDip-HeightMax', value = 126.635, 
                                                      label= 'Maximum Height Plot Limit',
                                                      description='Enter maximum plot value'),
                 ]),
@@ -571,7 +571,7 @@ class GlobalAnalysisApp:
 
             for cutI, cutName in enumerate(cut_name_list):
                 # For each cutName in the list find average for all load case name
-                dataCut = data[data['SectionCut'].str.startswith(cutName)].reset_index(drop=True)
+                dataCut = data[data['SectionCut'].str.startswith(cutName+' - ')].reset_index(drop=True)
                 aggCaseList = []
                 for i, case in enumerate(load_case_name):
                     if loadType[i] == 'TH':
@@ -584,7 +584,7 @@ class GlobalAnalysisApp:
                     maxData = dataCutCase.groupby(['CutHeight', 'StepType']).max().reset_index()
                     minData = dataCutCase.groupby(['CutHeight', 'StepType']).min().reset_index()
                 for cI, case in enumerate(load_case_name):
-                    filtered_data = data[(data['OutputCase'] == case) & (data['SectionCut'].str.startswith(cutName))]
+                    filtered_data = data[(data['OutputCase'] == case) & (data['SectionCut'].str.startswith(cutName + ' - '))]
                     if loadType[cI] == 'Lin':
                         self.plotCases(colList, typeList, cutI, cutName, cI, case, filtered_data, None, True, SF = 1.0, loadLabel = loadLabel[cI])
                     elif loadType[cI] == 'RS':
