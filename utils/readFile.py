@@ -27,6 +27,7 @@ def connectDB(filePath, connection=None):
         connection = sqlite3.connect(':memory:', check_same_thread=False)
     xls = pd.ExcelFile(filePath)
     for sheet in xls.sheet_names:
+        print(f'Processing {sheet}')
         df = pd.read_excel(filePath, sheet_name=sheet, header=1).iloc[1:]
         connection.execute('PRAGMA journal_mode=WAL;')
         df.to_sql(sheet, connection, index=False, if_exists='replace')

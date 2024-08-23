@@ -7,6 +7,9 @@ import numpy as np
 import os
 import distinctipy
 import time
+import tempfile
+from dash import dcc
+import zipfile
 
 # To run please run "python -m GeneralizedDisplacement.plotGenDisp" from the main folder
 
@@ -32,8 +35,11 @@ class GeneralizedDisplacement:
         if 'heightFileConnection' in kwargs:
             self.heightConnection = kwargs['heightFileConnection']
 
+        self.DlimName = kwargs['DlimName']
+
         self.compiledData = None
-        self.assignDriftLimit(Dlim = kwargs['Dlim'], Dmax = kwargs['Dmax'])
+        self.LABEL_LEGEND_FONT_SIZE = 8
+        self.assignDriftLimit(Dlim = kwargs['Dlim'], Dmax = kwargs['Dmax'], Dstep = kwargs['Dstep'])
         self.assignHeightLimits(Hmin = kwargs['Hmin'], Hmax = kwargs['Hmax'])
 
     def populateFields(self):
@@ -73,16 +79,16 @@ class GeneralizedDisplacement:
     def getDispList(self):
         return sorted(self.dispData['GenDispl'].str.split('_').str[2].unique().tolist())
 
-    def assignDriftLimit(self, Dlim=0.004, Dmax=0.006):
+    def assignDriftLimit(self, Dlim=0.004, Dmax=0.006, Dstep=0.001):
         self.Dlim = Dlim
         self.Dmax = Dmax
+        self.Dstep = Dstep
     
     def assignHeightLimits(self, Hmin=-60.365, Hmax=29.835):
         self.Hmin = Hmin
         self.Hmax = Hmax
 
     def processData(self, gridList, GMList, dispList, colList=['#1f77b4','#ff7f0e']):
-        print('Processing Data')
         self.compiledData = pd.DataFrame(columns=['GenDispl', 'OutputCase', 'Disp', 'TopJoint', 'TopZ', 'BotJoint', 'BotZ', 'Drift'])
         genDispDefn = self.genDispDefn
         jointData = self.jointData
@@ -108,14 +114,10 @@ class GeneralizedDisplacement:
         for g in gridList:
             for gm_i, gm in enumerate(GMList):
                 for d_i, d in enumerate(dispList):
-                    print(g, gm, d)
-                    t1 = time.time()
                     condition1 = self.dispData['GenDispl'].str.contains(g+"_")
                     condition2 = self.dispData['OutputCase'] == gm
                     condition3 = self.dispData['GenDispl'].str.contains(d)
                     selGrid = self.dispData[condition1 & condition2 & condition3].reset_index(drop=True)
-                    t2 = time.time()
-                    print(f'Selection Time: {t2-t1}')
                     query = f"""
                     SELECT selGrid.GenDispl, OutputCase, Disp, topJoint.Joint as TopJoint,topJoint.Z as TopZ, botJoint.Joint as BotJoint, botJoint.Z as BotZ
                     FROM selGrid
@@ -125,26 +127,23 @@ class GeneralizedDisplacement:
                     ON selGrid.GenDispl = botJoint.GenDispl
                     """
                     finalData = ps.sqldf(query, locals())
-                    t3 = time.time()
-                    print(f'Join Time: {t3-t2}')
                     finalData['Drift'] = abs(finalData['Disp']/(finalData['TopZ'] - finalData['BotZ']))
-                    t4 = time.time()
-                    print(f'Drift Time: {t4-t3}')
-                    #self.compiledData = cleanDB(self.compiledData)
-                    #finalData = cleanDB(finalData)
                     self.compiledData = pd.concat([self.compiledData, finalData], ignore_index=True)
-                    t5 = time.time()
-                    print(f'Concat Time: {t5-t4}')
         return self.compiledData
     
     def plotData(self, gridList, GMList, dispList, colList=['#1f77b4','#ff7f0e']):
         # Generate the compiled data
         self.processData(gridList, GMList, dispList, colList)
+        # Temp path
+        output_dir = os.path.join(tempfile.gettempdir(), 'drifts_plots')
+        os.makedirs(output_dir, exist_ok=True)
+        excel_file_path = os.path.join(output_dir, 'outputDrifts.xlsx')
         # Save the compiled data
-        self.compiledData.to_excel(inputFileLoc + '\\DRIFTS\\outputDrifts.xlsx', index=False)
+        self.compiledData.to_excel(excel_file_path, index=False)
         print('Data Processed and Saved')
         # Plot the data
         print('Plotting Data')
+        plot_files = []
         for g in gridList:
             fig, ax = plt.subplots(1,len(dispList), figsize=(5*len(dispList),5))
             for d_i, d in enumerate(dispList):
@@ -157,29 +156,41 @@ class GeneralizedDisplacement:
                     ax[d_i].step(selGrid['Drift'], selGrid['TopZ'], label=gm, color = colList[gm_i%len(colList)], marker = '.')
                 self.formataxis(ax[d_i])
             plt.tight_layout()
-            plt.savefig(inputFileLoc + f'\\DRIFTS\\{g}_Drift.png', dpi = 300)
+            #New Save File
+            plot_file_path = os.path.join(output_dir, f'{g}_Drift.png')
+            plt.savefig(plot_file_path, dpi = 300)
+            plot_files.append(plot_file_path)
+            #Old Save File
+            #plt.savefig(inputFileLoc + f'\\DRIFTS\\{g}_Drift.png', dpi = 300)
             plt.close()
         print('Data Plotted and Saved')
+        zip_file_path = os.path.join(output_dir, 'drifts_plots.zip')
+        with zipfile.ZipFile(zip_file_path, 'w') as zipf:
+            zipf.write(excel_file_path, os.path.basename(excel_file_path))
+            for plot_file in plot_files:
+                zipf.write(plot_file, os.path.basename(plot_file))
+        return dcc.send_file(zip_file_path, filename = 'drifts_plots.zip')
     
     def formataxis(self, ax):
         ax.set_xlim(0, self.Dmax)
         
-        ax.vlines(self.Dlim, self.Hmin, self.Hmax, linestyle='--', color = 'red', linewidth=1.5, label='SLE Limit')
-        ax.set_xticks(np.arange(0, self.Dmax+0.001, 0.001))
-        ax.set_xticklabels(['{:.1f}%'.format(x*100) for x in ax.get_xticks()], fontsize=LABEL_LEGEND_FONT_SIZE)
+        ax.vlines(self.Dlim, self.Hmin, self.Hmax, linestyle='--', color = 'red', linewidth=1.5, label=self.DlimName)
+        ax.set_xticks(np.arange(0, self.Dmax + self.Dstep, self.Dstep))
+        ax.set_xticklabels(['{:.1f}%'.format(x*100) for x in ax.get_xticks()], fontsize=self.LABEL_LEGEND_FONT_SIZE)
         ax.set_yticks(self.heightData['SAP2000Elev'])
-        ax.set_yticklabels(self.heightData['FloorLabel'], fontsize=LABEL_LEGEND_FONT_SIZE)
-        ax.legend(loc='lower right', fontsize=LABEL_LEGEND_FONT_SIZE)
+        ax.set_yticklabels(self.heightData['FloorLabel'], fontsize=self.LABEL_LEGEND_FONT_SIZE)
+        ax.legend(loc='lower right', fontsize=self.LABEL_LEGEND_FONT_SIZE)
         ax.set_xlabel('Drift (%)')
         ax.set_ylabel('Story')
         ax.grid(which='both', linestyle='--', linewidth=0.5)
         secax_y = ax.secondary_yaxis('right')
         secax_y.set_yticks(self.heightData['SAP2000Elev'])
-        secax_y.set_yticklabels([int(round(x,0)) for x in self.heightData['SAP2000Elev']], fontsize=LABEL_LEGEND_FONT_SIZE)
+        secax_y.set_yticklabels([int(round(x,0)) for x in self.heightData['SAP2000Elev']], fontsize=self.LABEL_LEGEND_FONT_SIZE)
         secax_y.set_ylabel('Height (m)')
         ax.set_ylim(self.Hmin, self.Hmax)
         return ax
 
+"""
 if __name__ == '__main__':
     #################################### USER INPUT ####################################
     inputFileLoc = r"C:\\Users\\abindal\\OneDrive - Nabih Youssef & Associates\\Documents\\00_Projects\\06_The Vault\\20240715 Models\\20240814_302\\"
@@ -205,10 +216,10 @@ if __name__ == '__main__':
         os.makedirs(inputFileLoc + f'\\DRIFTS')
 
     genDisp = GeneralizedDisplacement(analysisFile=inputFile, heightFile=heightFile, 
-                                      Dlim = 0.004, Dmax = 0.005, 
+                                      DlimName = 'SLE Limit', Dlim = 0.004, Dmax = 0.005, Dstep = 0.001,
                                       Hmin=-22.965, Hmax=126.635)
     genDisp.readMainFile()
     genDisp.readDefinitionFile()
     genDisp.readHeightFile()
     genDisp.plotData(gridList, GMList, dispList)               
-   
+"""

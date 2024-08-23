@@ -94,14 +94,19 @@ class GlobalAnalysisApp:
             theme={"colorScheme": "light"},
             children=[
                 dmc.Grid([
-                    createTextInputComponent('Def-cutName', 'Section Cut Prefix', 'Enter the prefix to be used in Section Cut names', placeholder='S12'),
+                    createTextInputComponent(idName='Def-cutName', 
+                                             label='Section Cut Prefix', 
+                                             description='Enter the prefix to be used in Section Cut names', 
+                                             placeholder='S12'),
                 ]),
                 dmc.Grid([
                     createSelectComponent('Def-cutDirection', 'Normal Direction', description = 'Specify the direction normal to the Section Cut plane',
                                           values=['X', 'Y', 'Z']),
                 ]),
                 dmc.Grid([
-                    createTextInputComponent('Def-groupName', 'Section Cut Group', 'Enter name of the group that the Section Cut cuts through', 
+                    createTextInputComponent(idName='Def-groupName', 
+                                             label='Section Cut Group', 
+                                             description='Enter name of the group that the Section Cut cuts through', 
                                              value='All'),
                 ]),
                 createNumberInputComponent('Normal Coordinate', -60.365, 29.835,  10, 'm'),
@@ -117,13 +122,26 @@ class GlobalAnalysisApp:
                 createUploadComponent('upload-height-data', 'Height Label'),
                 dmc.Grid([
                     createMultiSelectComponent('cut-name-list', 'Cuts'),
-                    createTextInputComponent('line-type-list', 'Enter the line types for Cuts', 'Enter line types, separated by commas', value='solid'),
-                    createTextInputComponent('load-case-types', 'Enter the Load Case type (Lin, NonLin, RS, TH)', 'Enter Load Case types, separated by commas', value=''),
+                    createTextInputComponent(idName='line-type-list', 
+                                             label='Enter the line types for Cuts', 
+                                             description='Enter line types, separated by commas', 
+                                             value='solid'),
+                    createTextInputComponent(idName='load-case-types', 
+                                             label='Enter the Load Case type (Lin, NonLin, RS, TH)', 
+                                             description='Enter Load Case types, separated by commas', 
+                                             value=''),
                 ]),
                 dmc.Grid([
                     createMultiSelectComponent('load-case-name', 'Load Cases'),
-                    createTextInputComponent('load-case-colors', 'Enter the colors for Load Cases', 'Enter Load Case colors, separated by commas', value='red,blue,black'),
-                    createTextInputComponent('load-case-labels', 'Enter the labels for Load Cases', 'Enter Load Case labels, separated by commas', value='', placeholder = 'Leave black for aggregation'),
+                    createTextInputComponent(idName='load-case-colors', 
+                                             label='Enter the colors for Load Cases', 
+                                             description='Enter Load Case colors, separated by commas', 
+                                             value='red,blue,black'),
+                    createTextInputComponent(idName='load-case-labels', 
+                                             label='Enter the labels for Load Cases', 
+                                             description='Enter Load Case labels, separated by commas', 
+                                             value='', 
+                                             placeholder = 'Leave black for aggregation'),
 
                 ]),
                 createRadioComponent(idName='sectionCut-agg-type', values = ['Individual', 'Average', 'Min', 'Max']),
@@ -173,20 +191,26 @@ class GlobalAnalysisApp:
             children=[
                 createUploadComponent('upload-gendisp-group', 'Drift Group Information', description='Upload the file with the following tables: "Joint Coordinates" and "Groups 2 - Assignments"'),
                 dmc.Grid([
-                createTextInputComponent('grid-list', 'Grid List', 'Enter grid labels separated by commas', placeholder='S12A,S12B,S12C'),
+                createTextInputComponent(idName = 'grid-list', 
+                                         label = 'Grid List', 
+                                         description = 'Enter grid labels separated by commas', 
+                                         placeholder = 'S12A,S12B,S12C'),
                 ]),
                 dmc.Grid([
-                    createTextInputComponent('drift-top-suffix', 
-                                             'Suffix for Top Joint group', 
-                                             'Enter the suffix used in the group definition', 
+                    createTextInputComponent(idName = 'drift-top-suffix', 
+                                             label = 'Suffix for Top Joint group', 
+                                             description = 'Enter the suffix used in the group definition', 
                                              placeholder='Drift_Top_'),
-                    createTextInputComponent('drift-bot-suffix',
-                                            'Suffix for Bottom Joint group',
-                                            'Enter the suffix used in the group definition',
-                                            placeholder='Drift_Bot_'),
+                    createTextInputComponent(idName = 'drift-bot-suffix',
+                                             label = 'Suffix for Bottom Joint group',
+                                             description = 'Enter the suffix used in the group definition',
+                                             placeholder='Drift_Bot_'),
                 ]),
                 dmc.Grid([
-                createTextInputComponent('output-file-name', 'Output File Name', 'Enter the name of the output excel file', value='GeneralizedDisplacement_Definition'),
+                createTextInputComponent(idName = 'output-file-name', 
+                                         label = 'Output File Name', 
+                                         description = 'Enter the name of the output excel file', 
+                                         value='GeneralizedDisplacement_Definition'),
                 ]),
                 dmc.Group([
                 dmc.Button("Submit", id='submit-button-defineGenDisp', color="blue"),
@@ -209,33 +233,51 @@ class GlobalAnalysisApp:
                 createUploadComponent('vizGenDisp-upload-height', 'Height Label',
                                       description='The file should contain the following tables: "Floor Elevations"'),
                 dmc.Grid([
-                    createMultiSelectComponent('vizGenDip-GMlist', 'Load Cases'),
-                    createTextInputComponent('vizGenDip-case-color', 'Enter colors for Load Cases', 'Enter values, separated by commas', value=''),            
+                    createMultiSelectComponent('vizGenDisp-GMlist', 'Load Cases'),
+                    createTextInputComponent(idName = 'vizGenDisp-case-color', 
+                                             label = 'Enter colors for Load Cases', 
+                                             description = 'Enter values, separated by commas', 
+                                             value='#1f77b4,#ff7f0e'),            
                 ]),
                 dmc.Grid([
-                    createMultiSelectComponent('vizGenDip-grid-list', 'Grids'),
-                    createMultiSelectComponent('vizGenDip-disp-list', 'Displacements'),
+                    createMultiSelectComponent('vizGenDisp-grid-list', 'Grids'),
+                    createMultiSelectComponent('vizGenDisp-disp-list', 'Displacements'),
                 ]),
                 dmc.Grid([
-                    createSingleNumberInputComponent(id='vizGenDip-DriftLim', value = 0.004, 
+                    createTextInputComponent(idName = 'vizGenDisp-DriftLim-label', 
+                                             label  = 'Enter the label for drift limit',
+                                             description = 'Enter the legend label for the drift limit', 
+                                             value  = 'SLE Limit'), 
+                    createSingleNumberInputComponent(id='vizGenDisp-DriftLim', value = 0.004, 
                                                      label= 'Code Limit for Drift Plots',
                                                      description='Enter drift limits per code'),
-                    createSingleNumberInputComponent(id='vizGenDip-DriftMax', value = 0.006, 
+                ]),
+                dmc.Grid([
+                    createSingleNumberInputComponent(id='vizGenDisp-DriftStep', value = 0.001, 
+                                                     label= 'Drift Plot Step Size',
+                                                     description='Enter plot step size'),
+
+                    createSingleNumberInputComponent(id='vizGenDisp-DriftMax', value = 0.006, 
                                                      label= 'Maximum Drift Plot Limit',
                                                      description='Enter maximum plot value'),
                 ]),
                 dmc.Grid([
-                    createSingleNumberInputComponent(id='vizGenDip-HeightMin', value = -22.965, 
+                    createSingleNumberInputComponent(id='vizGenDisp-HeightMin', value = -22.965, 
                                                      label= 'Minimum Height Plot Limit',
                                                      description='Enter minimum plot value'),
-                    createSingleNumberInputComponent(id='vizGenDip-HeightMax', value = 126.635, 
+                    createSingleNumberInputComponent(id='vizGenDisp-HeightMax', value = 126.635, 
                                                      label= 'Maximum Height Plot Limit',
                                                      description='Enter maximum plot value'),
                 ]),
                 dmc.Group([
-                dmc.Button("Submit", id='submit-button-vizGenDisp', color="blue"),
+                dmc.Button("Plot!", id='plot-button-vizGenDisp', color="blue"),
                 dmc.Button("Clear", id='clear-button-vizGenDisp', color="red"),
                 ]),
+                dmc.Alert("The file has been downloaded",
+                          id='GenDispPlot-download-modal',
+                          color = 'green',
+                          duration=2000),
+                dcc.Download(id="download-GenDispPlot-excel"),
             ]
         )
 
@@ -309,20 +351,53 @@ class GlobalAnalysisApp:
         
         # Update load case names, grid names, displacements in Viz Generalized Disp
         @self.app.callback(
-            [Output('vizGenDip-GMlist', 'data'),
-             Output('vizGenDip-grid-list', 'data'),
-             Output('vizGenDip-disp-list', 'data')],
+            [Output('vizGenDisp-GMlist', 'data'),
+             Output('vizGenDisp-grid-list', 'data'),
+             Output('vizGenDisp-disp-list', 'data')],
             [Input('file-upload-status', 'data'),
-             Input('vizGenDip-DriftLim', 'data'),
-             Input('vizGenDip-DriftMax', 'data'),
-             Input('vizGenDip-HeightMin', 'data'),
-             Input('vizGenDip-HeightMax', 'data')],
+             State('vizGenDisp-DriftLim', 'data'),
+             State('vizGenDisp-DriftMax', 'data'),
+             State('vizGenDisp-HeightMin', 'data'),
+             State('vizGenDisp-HeightMax', 'data'),
+             State('vizGenDisp-DriftStep', 'data'),
+             State('vizGenDisp-DriftLim-label', 'data')],
             suppress_callback_exceptions=True
         )
-        def updateCaseGridDisp_VizDisp(data, Dlim, Dmax, Hmin, Hmax):
+        def updateCaseGridDisp_VizDisp(data, Dlim, Dmax, Hmin, Hmax, Dstep, DlimName):
             if data and 'vizDataFileUploaded' in data.keys() and 'heightFileUploaded' in data.keys() and data['vizDataFileUploaded'] == 'Complete' and data['heightFileUploaded'] == 'Complete':
-                return self.updateCaseGridDisp(Dlim, Dmax, Hmin, Hmax)
+                return self.updateCaseGridDisp(Dlim, Dmax, Hmin, Hmax, Dstep, DlimName)
             return no_update, no_update, no_update
+        
+        # Plot the Generalized Displacement
+        @self.app.callback(
+            Output('GenDispPlot-download-modal', 'hide'),
+            Output('download-GenDispPlot-excel', 'data'),
+            Input('plot-button-vizGenDisp', 'n_clicks'),
+            State('vizGenDisp-GMlist', 'value'),
+            State('vizGenDisp-case-color', 'value'),
+            State('vizGenDisp-grid-list', 'value'),
+            State('vizGenDisp-disp-list', 'value'),
+            State('vizGenDisp-DriftLim', 'value'),
+            State('vizGenDisp-DriftMax', 'value'),
+            State('vizGenDisp-HeightMin', 'value'),
+            State('vizGenDisp-HeightMax', 'value'),
+            State('vizGenDisp-DriftStep', 'value'),
+            State('vizGenDisp-DriftLim-label', 'value'),
+            suppress_callback_exceptions=True
+        )
+        def plotGenDisp(n_clicks, GMlist, caseColor, gridList, dispList, Dlim, Dmax, Hmin, Hmax, Dstep, DlimName):
+            if n_clicks:
+                if self.conn is not None:
+                    self.genDisp = GeneralizedDisplacement(analysisFileConnection = self.conn,
+                                                   heightFileConnection = self.height_conn,
+                                                   Dlim = Dlim, Dmax=Dmax, DlimName = DlimName, Dstep = Dstep,
+                                                   Hmin=Hmin, Hmax=Hmax)
+                    self.genDisp.readMainFile()
+                    self.genDisp.readDefinitionFile()
+                    self.genDisp.readHeightFile()
+                    return False, self.genDisp.plotData(gridList=gridList, GMList=GMlist, dispList=dispList, colList=caseColor.split(','))
+            return True, no_update
+
 
         # Clear the data
         self.app.callback(
@@ -387,8 +462,10 @@ class GlobalAnalysisApp:
             suppress_callback_exceptions=True
         )
         def updateFileName(contents, filename, storedData):
+            trigger = callback_context.triggered[0]['prop_id'].split('.')[0]
+            print('Trigger:', trigger)
             return callbackMethod(contents=contents, filename=filename, 
-                                  fileCategory=fileCategory,storedData=storedData)
+                                     fileCategory=fileCategory,storedData=storedData)
     
     
     def updateFileUploadText(self, **kwargs):
@@ -403,6 +480,7 @@ class GlobalAnalysisApp:
             decoded = base64.b64decode(content_string)
             file = io.BytesIO(decoded)
             if fileCategory in ['Section Cut', 'Drift Group','Generalized Displacement']:
+                print('Reading File....fileCategory:', fileCategory)
                 self.conn = connectDB(file)
                 if fileCategory == 'Section Cut':
                     storedData['SectionCutDataFileUploaded'] = 'Complete'
@@ -437,11 +515,11 @@ class GlobalAnalysisApp:
         processedData = output.getvalue()
         return processedData
     
-    def updateCaseGridDisp(self, Dlim, Dmax, Hmin, Hmax):
+    def updateCaseGridDisp(self, Dlim, Dmax, Hmin, Hmax, Dstep, DlimName):
         if self.conn is not None:
             self.genDisp = GeneralizedDisplacement(analysisFileConnection = self.conn,
                                                    heightFileConnection = self.height_conn,
-                                                   Dlim = Dlim, Dmax=Dmax, 
+                                                   Dlim = Dlim, Dmax=Dmax, DlimName = DlimName, Dstep = Dstep,
                                                    Hmin=Hmin, Hmax=Hmax)
             return self.genDisp.populateFields()
         return [], [], []

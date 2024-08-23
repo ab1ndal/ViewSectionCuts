@@ -66,7 +66,7 @@ def createSelectComponent(idName, label, **kwargs):
                     searchable=True)
     ], span=4)
 
-def createTextInputComponent(idName, label, description, **kwargs):
+def createTextInputComponent(idName, label, **kwargs):
     if 'placeholder' in kwargs:
         placeholder = kwargs['placeholder']
     else:
@@ -76,6 +76,11 @@ def createTextInputComponent(idName, label, description, **kwargs):
         value = kwargs['value']
     else:
         value = None
+
+    if 'description' in kwargs:
+        description = kwargs['description']
+    else:
+        description = None
         
     return dmc.Col([
                 dmc.TextInput(label=label,
