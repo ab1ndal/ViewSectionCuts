@@ -33,8 +33,8 @@ class GlobalAnalysisApp:
         self.allLegendList = []
 
         # Create subplots
-        self.fig = make_subplots(rows=2, cols=3, subplot_titles=('F1', 'F2', 'F3', 'M1', 'M2', 'M3'),
-                                 vertical_spacing=0.1, horizontal_spacing=0.08, specs=[[{"secondary_y": True}, {"secondary_y": True}, {"secondary_y": True}],
+        self.fig = make_subplots(rows=2, cols=3, subplot_titles=('F1 (A-Canyon)', 'F2 (X-Canyon)', 'F3 (Vertical)', 'M2 (A-Canyon)', 'M1 (X-Canyon)', 'M3'),
+                                 vertical_spacing=0.1, horizontal_spacing=0.1, specs=[[{"secondary_y": True}, {"secondary_y": True}, {"secondary_y": True}],
                                                                                       [{"secondary_y": True}, {"secondary_y": True}, {"secondary_y": True}]])
         self.createMenu()
         #self.createLayout()
@@ -457,7 +457,7 @@ class GlobalAnalysisApp:
             Output(componentID, 'children')],
             [Input(componentID, 'contents'),
             State(componentID, 'filename'),
-            Input('file-upload-status', 'data')],
+            State('file-upload-status', 'data')],
             prevent_initial_call=True,
             suppress_callback_exceptions=True
         )
@@ -645,7 +645,11 @@ class GlobalAnalysisApp:
             for Li, lType in enumerate(loadType):
                 if lType == 'TH' and agg_type != 'Individual':
                     colList[Li] = '#D3D3D3'
-
+            for i in range(1,3):
+                for j in range(1,4):
+                    self.fig.add_trace(go.Scatter(y=[], x=[], mode='lines'), row=i, col=j, secondary_y=True)
+        
+            
 
             for cutI, cutName in enumerate(cut_name_list):
                 # For each cutName in the list find average for all load case name
@@ -673,18 +677,26 @@ class GlobalAnalysisApp:
                         self.plotCases(colList, typeList, cutI, cutName, cI, case, filtered_data, 'Min', False, SF = 1.0, loadLabel = loadLabel[cI])
                     elif loadType[cI] == 'TH':
                         showLabel = True if agg_type == 'Individual' else False
-                        self.plotCases(colList, typeList, cutI, cutName, cI, case, filtered_data, 'Max', showLabel, SF = 1.0, loadLabel = loadLabel[cI])
-                        self.plotCases(colList, typeList, cutI, cutName, cI, case, filtered_data, 'Min', False, SF = 1.0, loadLabel = loadLabel[cI])
+                        lineWidth = 2 if agg_type == 'Individual' else 1
+                        self.plotCases(colList, typeList, cutI, cutName, cI, case, filtered_data, 'Max', showLabel, SF = 1.0, loadLabel = loadLabel[cI], lineWidth=lineWidth)
+                        self.plotCases(colList, typeList, cutI, cutName, cI, case, filtered_data, 'Min', False, SF = 1.0, loadLabel = loadLabel[cI], lineWidth=lineWidth)
                 if agg_type == 'Average':
-                    self.plotCases(['black'], typeList, cutI, cutName, cI, case, avgData, 'Max', True, SF = 1.0, loadLabel = 'Average MCE')
-                    self.plotCases(['black'], typeList, cutI, cutName, cI, case, avgData, 'Min', False, SF = 1.0, loadLabel = 'Average MCE')
+                    self.plotCases(['green'], typeList, cutI, cutName, cI, case, avgData, 'Max', True, SF = 1.0, loadLabel = 'Average MCE')
+                    self.plotCases(['green'], typeList, cutI, cutName, cI, case, avgData, 'Min', False, SF = 1.0, loadLabel = 'Average MCE')
                 if agg_type == 'Min':
-                    self.plotCases(['black'], typeList, cutI, cutName, cI, case, minData, 'Max', True, SF = 1.0, loadLabel = 'Min MCE')
-                    self.plotCases(['black'], typeList, cutI, cutName, cI, case, maxData, 'Min', False, SF = 1.0, loadLabel = 'Min MCE')
+                    self.plotCases(['green'], typeList, cutI, cutName, cI, case, minData, 'Max', True, SF = 1.0, loadLabel = 'Min MCE')
+                    self.plotCases(['green'], typeList, cutI, cutName, cI, case, maxData, 'Min', False, SF = 1.0, loadLabel = 'Min MCE')
                 if agg_type == 'Max':
-                    self.plotCases(['black'], typeList, cutI, cutName, cI, case, maxData, 'Max', True, SF = 1.0, loadLabel = 'Max MCE')
-                    self.plotCases(['black'], typeList, cutI, cutName, cI, case, minData, 'Min', False, SF = 1.0, loadLabel = 'Max MCE')
-
+                    self.plotCases(['green'], typeList, cutI, cutName, cI, case, maxData, 'Max', True, SF = 1.0, loadLabel = 'Max MCE')
+                    self.plotCases(['green'], typeList, cutI, cutName, cI, case, minData, 'Min', False, SF = 1.0, loadLabel = 'Max MCE')
+            
+            for i in range(1,3):
+                for j in range(1,4):
+                    self.fig.add_vline(
+                        x=0, line_width=1, line_dash="dash",line_color="black",
+                        row=i, col=j, secondary_y=True
+                        )
+                    
             self.fig.update_layout(
                         title={
                             'text': plot_title,
@@ -696,15 +708,18 @@ class GlobalAnalysisApp:
                         template="plotly_white",
                         legend=dict(
                             font = self.LEGEND_FONT,
-                            orientation="h",
-                            yanchor="bottom",
-                            y=-0.1,
-                            xanchor="center",
-                            x=0.5,
+                            orientation="v",
+                            yanchor="middle",
+                            y=0.5,
+                            xanchor="left",
+                            x=1.008,
                             traceorder="normal",
                             tracegroupgap=20,
+                            valign='middle',
+                            itemsizing='constant',
+                            itemwidth=80
                         ),
-                        margin=dict(l=20, r=20, t=60, b=20),
+                        margin=dict(l=20, r=100, t=60, b=20),
                         )
             
             self.updateAxis(shear_lims, axial_lims, moment_lims, torsion_lims, height_lims)
@@ -713,24 +728,21 @@ class GlobalAnalysisApp:
     def runApp(self):
         self.app.run_server(debug=True, port = self.port)     
 
-    def plotCases(self, colList, typeList, cutI, cutName, cI, case, filtered_data, StepType, showLegend, SF=1.0, loadLabel = '', agg_type = 'Individual'):
+    def plotCases(self, colList, typeList, cutI, cutName, cI, case, filtered_data, StepType, showLegend, SF=1.0, loadLabel = '', agg_type = 'Individual', lineWidth = 2):
         if StepType is not None:
             filtered_data = filtered_data[filtered_data['StepType'] == StepType]
         if loadLabel+'_'+cutName in self.allLegendList or loadLabel == '':
             showLegend = False
         else:
             self.allLegendList.append(loadLabel+'_'+cutName)
-        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=SF*filtered_data['F1'], mode='lines', name=loadLabel+'_'+cutName, line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)]),showlegend=showLegend, legendgroup=loadLabel+cutName), row=1, col=1, secondary_y=False)
-        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=SF*filtered_data['F2'], mode='lines', name=loadLabel+'_'+cutName, line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)]),showlegend=False, legendgroup=loadLabel+cutName), row=1, col=2, secondary_y=False)
-        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=SF*filtered_data['F3'], mode='lines', name=loadLabel+'_'+cutName, line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)]),showlegend=False, legendgroup=loadLabel+cutName), row=1, col=3, secondary_y=False)
-        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=SF*filtered_data['M1'], mode='lines', name=loadLabel+'_'+cutName, line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)]),showlegend=False, legendgroup=loadLabel+cutName), row=2, col=1, secondary_y=False)
-        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=SF*filtered_data['M2'], mode='lines', name=loadLabel+'_'+cutName, line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)]),showlegend=False, legendgroup=loadLabel+cutName), row=2, col=2, secondary_y=False)
-        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=SF*filtered_data['M3'], mode='lines', name=loadLabel+'_'+cutName, line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)]),showlegend=False, legendgroup=loadLabel+cutName), row=2, col=3, secondary_y=False)
+        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=SF*filtered_data['F1'], mode='lines', name=loadLabel+'_'+cutName, line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)], width=lineWidth),showlegend=showLegend, legendgroup=loadLabel+cutName), row=1, col=1, secondary_y=False)
+        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=SF*filtered_data['F2'], mode='lines', name=loadLabel+'_'+cutName, line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)], width=lineWidth),showlegend=False, legendgroup=loadLabel+cutName), row=1, col=2, secondary_y=False)
+        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=SF*filtered_data['F3'], mode='lines', name=loadLabel+'_'+cutName, line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)], width=lineWidth),showlegend=False, legendgroup=loadLabel+cutName), row=1, col=3, secondary_y=False)
+        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=SF*filtered_data['M2'], mode='lines', name=loadLabel+'_'+cutName, line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)], width=lineWidth),showlegend=False, legendgroup=loadLabel+cutName), row=2, col=1, secondary_y=False)
+        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=SF*filtered_data['M1'], mode='lines', name=loadLabel+'_'+cutName, line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)], width=lineWidth),showlegend=False, legendgroup=loadLabel+cutName), row=2, col=2, secondary_y=False)
+        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=SF*filtered_data['M3'], mode='lines', name=loadLabel+'_'+cutName, line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)], width=lineWidth),showlegend=False, legendgroup=loadLabel+cutName), row=2, col=3, secondary_y=False)
 
-        for i in range(1,3):
-            for j in range(1,4):
-                self.fig.add_trace(go.Scatter(y=[], x=[], mode='lines'), row=i, col=j, secondary_y=True)
-
+        
 
 globalApp = GlobalAnalysisApp()
 server = globalApp.app.server
