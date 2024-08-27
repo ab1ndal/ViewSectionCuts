@@ -15,6 +15,7 @@ from utils.appComponents import createUploadComponent, createMultiSelectComponen
 from GeneralizedDisplacement.defineGenDisp import defineGenDisp
 from GeneralizedDisplacement.plotGenDisp import GeneralizedDisplacement
 from utils.unitConvertor import UnitConvertor
+from utils.extraTools import wrap_text
 
 
 class GlobalAnalysisApp:
@@ -256,6 +257,16 @@ class GlobalAnalysisApp:
                     createMultiSelectComponent('vizGenDisp-disp-list', 'Displacements'),
                 ]),
                 dmc.Grid([
+                    createSelectComponent('vizGenDisp-input-unit', values=['lb,in,F', 'lb,ft,F', 'kip,in,F', 'kip,ft,F', 'kN,mm,C', 
+                                                                           'kN,m,C', 'Kgf,mm,C', 'Kgf,m,C', 'N,mm,C', 'N,m,C', 
+                                                                           'Tonf,mm,C','Tonf,m,C', 'kN,cm,C', 'Kgf,cm,C', 'N,cm,C', 
+                                                                           'Tonf,cm,C'], label='Input Unit', defaultValue='kN,m,C'),
+                    createSelectComponent('vizGenDisp-output-unit', values=['lb,in,F', 'lb,ft,F', 'kip,in,F', 'kip,ft,F', 'kN,mm,C', 
+                                                                           'kN,m,C', 'Kgf,mm,C', 'Kgf,m,C', 'N,mm,C', 'N,m,C', 
+                                                                           'Tonf,mm,C','Tonf,m,C', 'kN,cm,C', 'Kgf,cm,C', 'N,cm,C', 
+                                                                           'Tonf,cm,C'], label='Output Unit', defaultValue='kip,in,F'),
+                ]),
+                dmc.Grid([
                     createTextInputComponent(idName = 'vizGenDisp-DriftLim-label', 
                                              label  = 'Enter the label for drift limit',
                                              description = 'Enter the legend label for the drift limit', 
@@ -276,11 +287,24 @@ class GlobalAnalysisApp:
                                                      description='Enter maximum plot value'),
                 ]),
                 dmc.Grid([
+                    createSingleNumberInputComponent(id='vizGenDisp-DispMin', value = -5, 
+                                                     label= 'Minimum Displacement Plot Limit (in)',
+                                                     description='Enter minimum plot value'),
+
+                    createSingleNumberInputComponent(id='vizGenDisp-DispMax', value = 5, 
+                                                     label= 'Maximum Displacement Plot Limit (in)',
+                                                     description='Enter maximum plot value'),
+
+                    createSingleNumberInputComponent(id='vizGenDisp-DispStep', value = 1, 
+                                                     label= 'Displacement Plot Step Size (in)',
+                                                     description='Enter plot step size'),
+                ]),
+                dmc.Grid([
                     createSingleNumberInputComponent(id='vizGenDisp-HeightMin', value = -22.965, 
-                                                     label= 'Minimum Height Plot Limit',
+                                                     label= 'Minimum Height Plot Limit (m)',
                                                      description='Enter minimum plot value'),
                     createSingleNumberInputComponent(id='vizGenDisp-HeightMax', value = 126.635, 
-                                                     label= 'Maximum Height Plot Limit',
+                                                     label= 'Maximum Height Plot Limit (m)',
                                                      description='Enter maximum plot value'),
                 ]),
                 dmc.Group([
@@ -350,7 +374,7 @@ class GlobalAnalysisApp:
             Input('sectionCut-output-unit', 'value'),
             ],
         )
-        def updateDisplayLabel(inUnit, outUnit):
+        def updateSecCutLabel(inUnit, outUnit):
             units = UnitConvertor(inUnit, outUnit)
             return (f"Shear - Minimum ({units.printUnit('force')})",
                     f"Shear - Maximum ({units.printUnit('force')})",
@@ -365,6 +389,18 @@ class GlobalAnalysisApp:
                     f"Torsion - Maximum ({units.printUnit('moment')})",
                     f"Torsion - Step Size ({units.printUnit('moment')})")
         
+        @self.app.callback(
+            [Output('vizGenDisp-DispMin', 'label'),
+             Output('vizGenDisp-DispStep', 'label'),
+             Output('vizGenDisp-DispMax', 'label'),
+             State('vizGenDisp-input-unit', 'value'),
+             Input('vizGenDisp-output-unit', 'value')],
+        )
+        def updateDispLabel(inUnit, outUnit):
+            units = UnitConvertor(inUnit, outUnit)
+            return (f"Minimum Displacement Plot Limit ({units.printUnit('length')})",
+                    f"Displacement Plot Step Size ({units.printUnit('length')})",
+                    f"Maximum Displacement Plot Limit ({units.printUnit('length')})")
 
         
         #Clear the data
@@ -796,17 +832,17 @@ class GlobalAnalysisApp:
     def plotCases(self, colList, typeList, cutI, cutName, cI, case, filtered_data, StepType, showLegend, SF=1.0, loadLabel = '', agg_type = 'Ind', lineWidth = 2, inUnit = 'kN,m,C', outUnit = 'kN,m,C'):
         if StepType is not None:
             filtered_data = filtered_data[filtered_data['StepType'] == StepType]
-        if loadLabel+'_'+cutName in self.allLegendList or loadLabel == '':
+        if wrap_text(loadLabel+'_'+cutName) in self.allLegendList or loadLabel == '':
             showLegend = False
         else:
-            self.allLegendList.append(loadLabel+'_'+cutName)
+            self.allLegendList.append(wrap_text(loadLabel+'_'+cutName))
         units = UnitConvertor(inUnit, outUnit)
-        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=units.convert(1,'force')*SF*filtered_data['F1'], mode='lines', name=loadLabel+'_'+cutName, line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)], width=lineWidth),showlegend=showLegend, legendgroup=loadLabel+cutName), row=1, col=1, secondary_y=False)
-        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=units.convert(1,'force')*SF*filtered_data['F2'], mode='lines', name=loadLabel+'_'+cutName, line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)], width=lineWidth),showlegend=False, legendgroup=loadLabel+cutName), row=1, col=2, secondary_y=False)
-        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=units.convert(1,'force')*SF*filtered_data['F3'], mode='lines', name=loadLabel+'_'+cutName, line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)], width=lineWidth),showlegend=False, legendgroup=loadLabel+cutName), row=1, col=3, secondary_y=False)
-        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=units.convert(1,'moment')*SF*filtered_data['M2'], mode='lines', name=loadLabel+'_'+cutName, line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)], width=lineWidth),showlegend=False, legendgroup=loadLabel+cutName), row=2, col=1, secondary_y=False)
-        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=units.convert(1,'moment')*SF*filtered_data['M1'], mode='lines', name=loadLabel+'_'+cutName, line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)], width=lineWidth),showlegend=False, legendgroup=loadLabel+cutName), row=2, col=2, secondary_y=False)
-        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=units.convert(1,'moment')*SF*filtered_data['M3'], mode='lines', name=loadLabel+'_'+cutName, line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)], width=lineWidth),showlegend=False, legendgroup=loadLabel+cutName), row=2, col=3, secondary_y=False)
+        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=units.convert(1,'force')*SF*filtered_data['F1'], mode='lines', name=wrap_text(loadLabel+'_'+cutName), line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)], width=lineWidth),showlegend=showLegend, legendgroup=loadLabel+cutName), row=1, col=1, secondary_y=False)
+        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=units.convert(1,'force')*SF*filtered_data['F2'], mode='lines', name=wrap_text(loadLabel+'_'+cutName), line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)], width=lineWidth),showlegend=False, legendgroup=loadLabel+cutName), row=1, col=2, secondary_y=False)
+        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=units.convert(1,'force')*SF*filtered_data['F3'], mode='lines', name=wrap_text(loadLabel+'_'+cutName), line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)], width=lineWidth),showlegend=False, legendgroup=loadLabel+cutName), row=1, col=3, secondary_y=False)
+        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=units.convert(1,'moment')*SF*filtered_data['M2'], mode='lines', name=wrap_text(loadLabel+'_'+cutName), line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)], width=lineWidth),showlegend=False, legendgroup=loadLabel+cutName), row=2, col=1, secondary_y=False)
+        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=units.convert(1,'moment')*SF*filtered_data['M1'], mode='lines', name=wrap_text(loadLabel+'_'+cutName), line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)], width=lineWidth),showlegend=False, legendgroup=loadLabel+cutName), row=2, col=2, secondary_y=False)
+        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=units.convert(1,'moment')*SF*filtered_data['M3'], mode='lines', name=wrap_text(loadLabel+'_'+cutName), line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)], width=lineWidth),showlegend=False, legendgroup=loadLabel+cutName), row=2, col=3, secondary_y=False)
 
         
 

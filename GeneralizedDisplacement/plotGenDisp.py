@@ -39,6 +39,11 @@ class GeneralizedDisplacement:
 
         self.showLimit = kwargs['showLimit'] == 'True'
 
+        if 'plotList' in kwargs:
+            self.plotList = kwargs['plotList']
+        else:
+            self.plotList = ['Drift']
+
         self.compiledData = None
         self.LABEL_LEGEND_FONT_SIZE = 8
         self.assignDriftLimit(Dlim = kwargs['Dlim'], Dmax = kwargs['Dmax'], Dstep = kwargs['Dstep'])
@@ -53,33 +58,44 @@ class GeneralizedDisplacement:
 
     def readMainFile(self):
         #self.connection = connectDB(self.analysisFile)
-        query = f"""
-        SELECT GenDispl, OutputCase, max(abs(Translation)) as Disp
-        FROM "Jt Displacements - Generalized"
-        GROUP BY GenDispl, OutputCase
-        """
-        #connection = connectDB(inputFile)
-        self.dispData = getData(self.connection, query=query)
+        if 'Drift' in self.plotList:
+            query = f"""
+            SELECT GenDispl, OutputCase, max(abs(Translation)) as Disp
+            FROM "Jt Displacements - Generalized"
+            GROUP BY GenDispl, OutputCase
+            """
+            #connection = connectDB(inputFile)
+            self.genDispData = getData(self.connection, query=query)
+        if 'Displacement' in self.plotList:
+            query = f"""
+            SELECT Joint, OutputCase, StepType, U1, U2, U3
+            FROM "Joint Displacements"
+            """
+            #connection = connectDB(inputFile)
+            self.dispData = getData(self.connection, query=query)
 
 
     def readDefinitionFile(self):
         self.jointData = getData(self.connection, query='SELECT Joint, Z FROM "Joint Coordinates"')
-        self.genDispDefn = getData(self.connection, query='SELECT GenDispl, Joint, U1SF, U2SF FROM "Gen Displ Defs 1 - Translation"')
-        self.genDispDefn['Loc'] = self.genDispDefn['U1SF'] + self.genDispDefn['U2SF']
-        self.genDispDefn.drop(columns=['U1SF', 'U2SF'], inplace=True)
+        if 'Drift' in self.plotList:
+            self.genDispDefn = getData(self.connection, query='SELECT GenDispl, Joint, U1SF, U2SF FROM "Gen Displ Defs 1 - Translation"')
+            self.genDispDefn['Loc'] = self.genDispDefn['U1SF'] + self.genDispDefn['U2SF']
+            self.genDispDefn.drop(columns=['U1SF', 'U2SF'], inplace=True)
+        if 'Displacement' in self.plotList:
+            pass
 
     def readHeightFile(self):
         #self.heightConnection = connectDB(self.heightFile)
         self.heightData = getData(self.heightConnection, tableName='Floor Elevations')
 
     def getGMList(self):
-        return sorted(self.dispData['OutputCase'].unique().tolist())
+        return sorted(self.genDispData['OutputCase'].unique().tolist())
     
     def getGridList(self):
-        return sorted(self.dispData['GenDispl'].str.split('_').str[0].unique().tolist())
+        return sorted(self.genDispData['GenDispl'].str.split('_').str[0].unique().tolist())
     
     def getDispList(self):
-        return sorted(self.dispData['GenDispl'].str.split('_').str[2].unique().tolist())
+        return sorted(self.genDispData['GenDispl'].str.split('_').str[2].unique().tolist())
 
     def assignDriftLimit(self, Dlim=0.004, Dmax=0.006, Dstep=0.001):
         self.Dlim = Dlim
@@ -116,10 +132,10 @@ class GeneralizedDisplacement:
         for g in gridList:
             for gm_i, gm in enumerate(GMList):
                 for d_i, d in enumerate(dispList):
-                    condition1 = self.dispData['GenDispl'].str.contains(g+"_")
-                    condition2 = self.dispData['OutputCase'] == gm
-                    condition3 = self.dispData['GenDispl'].str.contains(d)
-                    selGrid = self.dispData[condition1 & condition2 & condition3].reset_index(drop=True)
+                    condition1 = self.genDispData['GenDispl'].str.contains(g+"_")
+                    condition2 = self.genDispData['OutputCase'] == gm
+                    condition3 = self.genDispData['GenDispl'].str.contains(d)
+                    selGrid = self.genDispData[condition1 & condition2 & condition3].reset_index(drop=True)
                     query = f"""
                     SELECT selGrid.GenDispl, OutputCase, Disp, topJoint.Joint as TopJoint,topJoint.Z as TopZ, botJoint.Joint as BotJoint, botJoint.Z as BotZ
                     FROM selGrid
