@@ -14,6 +14,7 @@ import os
 from utils.appComponents import createUploadComponent, createMultiSelectComponent, createTextInputComponent, createNumberInputComponent, createSelectComponent, createSingleNumberInputComponent, createRadioComponent
 from GeneralizedDisplacement.defineGenDisp import defineGenDisp
 from GeneralizedDisplacement.plotGenDisp import GeneralizedDisplacement
+from utils.unitConvertor import UnitConvertor
 
 
 class GlobalAnalysisApp:
@@ -127,7 +128,7 @@ class GlobalAnalysisApp:
                                              description='Enter line types, separated by commas', 
                                              value='solid'),
                     createTextInputComponent(idName='load-case-types', 
-                                             label='Enter the Load Case type (Lin, NonLin, RS, TH)', 
+                                             label='Enter Load Case type (Lin, NonLin, RS, TH)', 
                                              description='Enter Load Case types, separated by commas', 
                                              value=''),
                 ]),
@@ -144,7 +145,18 @@ class GlobalAnalysisApp:
                                              placeholder = 'Leave black for aggregation'),
 
                 ]),
-                createRadioComponent(idName='sectionCut-agg-type', values = ['Individual', 'Average', 'Min', 'Max'], showLabel = 'Aggregation Type'),
+                
+                dmc.Grid([
+                    createSelectComponent('sectionCut-input-unit', values=['lb,in,F', 'lb,ft,F', 'kip,in,F', 'kip,ft,F', 'kN,mm,C', 
+                                                                           'kN,m,C', 'Kgf,mm,C', 'Kgf,m,C', 'N,mm,C', 'N,m,C', 
+                                                                           'Tonf,mm,C','Tonf,m,C', 'kN,cm,C', 'Kgf,cm,C', 'N,cm,C', 
+                                                                           'Tonf,cm,C'], label='Input Unit', defaultValue='kN,m,C'),
+                    createSelectComponent('sectionCut-output-unit', values=['lb,in,F', 'lb,ft,F', 'kip,in,F', 'kip,ft,F', 'kN,mm,C', 
+                                                                           'kN,m,C', 'Kgf,mm,C', 'Kgf,m,C', 'N,mm,C', 'N,m,C', 
+                                                                           'Tonf,mm,C','Tonf,m,C', 'kN,cm,C', 'Kgf,cm,C', 'N,cm,C', 
+                                                                           'Tonf,cm,C'], label='Output Unit', defaultValue='kip,ft,F'),
+                    createRadioComponent(idName='sectionCut-agg-type', values = ['Ind', 'Average', 'Min', 'Max'], showLabel = 'Aggregation Type'),
+                ]),
 
                 dmc.TextInput(label='Enter the title for the plots',
                         w = 300,
@@ -320,6 +332,41 @@ class GlobalAnalysisApp:
                 return downloadData, False
             return no_update, True
         
+        # Update label of shear-min, shear-max, shear-step, axial-min, axial-max, axial-step, moment-min, moment-max, moment-step, torsion-min, torsion-max, torsion-step
+        @self.app.callback(
+            [Output('shear-min', 'label'),
+            Output('shear-max', 'label'),
+            Output('shear-step', 'label'),
+            Output('axial-min', 'label'),
+            Output('axial-max', 'label'),
+            Output('axial-step', 'label'),
+            Output('moment-min', 'label'),
+            Output('moment-max', 'label'),
+            Output('moment-step', 'label'),
+            Output('torsion-min', 'label'),
+            Output('torsion-max', 'label'),
+            Output('torsion-step', 'label'),
+            State('sectionCut-input-unit', 'value'),
+            Input('sectionCut-output-unit', 'value'),
+            ],
+        )
+        def updateDisplayLabel(inUnit, outUnit):
+            units = UnitConvertor(inUnit, outUnit)
+            return (f"Shear - Minimum ({units.printUnit('force')})",
+                    f"Shear - Maximum ({units.printUnit('force')})",
+                    f"Shear - Step Size ({units.printUnit('force')})",
+                    f"Axial - Minimum ({units.printUnit('force')})",
+                    f"Axial - Maximum ({units.printUnit('force')})",
+                    f"Axial - Step Size ({units.printUnit('force')})",
+                    f"Moment - Minimum ({units.printUnit('moment')})",
+                    f"Moment - Maximum ({units.printUnit('moment')})",
+                    f"Moment - Step Size ({units.printUnit('moment')})",
+                    f"Torsion - Minimum ({units.printUnit('moment')})",
+                    f"Torsion - Maximum ({units.printUnit('moment')})",
+                    f"Torsion - Step Size ({units.printUnit('moment')})")
+        
+
+        
         #Clear the data
         @self.app.callback(
             [Output('upload-gendisp-group', 'children',allow_duplicate=True),
@@ -451,7 +498,7 @@ class GlobalAnalysisApp:
             [State('moment-min', 'value'),State('moment-max', 'value'),State('moment-step', 'value')],
             [State('torsion-min', 'value'),State('torsion-max', 'value'),State('torsion-step', 'value')],
             [State('height-min', 'value'),State('height-max', 'value'),State('height-step', 'value')],
-            State('sectionCut-agg-type', 'value')],
+            State('sectionCut-agg-type', 'value'), State('sectionCut-input-unit', 'value'), State('sectionCut-output-unit', 'value')],
             prevent_initial_call=True,
             suppress_callback_exceptions=True
         )(self.plotData)
@@ -558,7 +605,8 @@ class GlobalAnalysisApp:
             return data, cutGroups
         return [], []
 
-    def updateAxis(self, shear_lims, axial_lims, moment_lims, torsion_lims, height_lims):
+    def updateAxis(self, shear_lims, axial_lims, moment_lims, torsion_lims, height_lims, inUnit='kN,m,C', outUnit='kN,m,C'):
+        units = UnitConvertor(inUnit, outUnit)
         for row in range(1, 3):
                 for col in range(1, 4):
                     if self.height_data is not None:
@@ -596,7 +644,7 @@ class GlobalAnalysisApp:
                         )
         for col in range(1,3):
                 self.fig.update_xaxes(
-                    title_text=f"Shear Along Axis {col} (kN)",
+                    title_text=f"Shear Along Axis {col} ({units.printUnit('force')})",
                     title_font=self.AXIS_TITLE_FONT,
                     tickfont=self.TICK_FONT,
                     showline=True, showgrid=True, zeroline=True, mirror=True,
@@ -605,7 +653,7 @@ class GlobalAnalysisApp:
                     dtick=shear_lims[-1]
                 )
                 self.fig.update_xaxes(
-                    title_text=f"Flexure About Axis {col} (kNm)",
+                    title_text=f"Flexure About Axis {col} ({units.printUnit('moment')})",
                     title_font=self.AXIS_TITLE_FONT,
                     tickfont=self.TICK_FONT,
                     showline=True, showgrid=True, zeroline=True, mirror=True,
@@ -615,7 +663,7 @@ class GlobalAnalysisApp:
                 )
 
         self.fig.update_xaxes(
-                title_text="Axial (kN)",
+                title_text=f"Axial ({units.printUnit('force')})",
                 title_font=self.AXIS_TITLE_FONT,
                 tickfont=self.TICK_FONT,
                 showline=True, showgrid=True, zeroline=True, mirror=True,
@@ -624,7 +672,7 @@ class GlobalAnalysisApp:
                 dtick=axial_lims[-1]
             )
         self.fig.update_xaxes(
-                title_text="Torsion (kNm)",
+                title_text=f"Torsion ({units.printUnit('moment')})",
                 title_font=self.AXIS_TITLE_FONT,
                 tickfont=self.TICK_FONT,
                 showline=True, showgrid=True, zeroline=True, mirror=True,
@@ -643,7 +691,7 @@ class GlobalAnalysisApp:
             self.fig.data = []
             return [], self.fig
     
-    def plotData(self, plotClicks, cut_name_list, line_type_list, load_case_name, load_case_color, load_case_label, load_case_type, plot_title, shear_lims, axial_lims, moment_lims, torsion_lims, height_lims, agg_type):
+    def plotData(self, plotClicks, cut_name_list, line_type_list, load_case_name, load_case_color, load_case_label, load_case_type, plot_title, shear_lims, axial_lims, moment_lims, torsion_lims, height_lims, agg_type, inUnit, outUnit):
         if plotClicks:
             self.fig.data = []
             data = getCutForces(self.conn, cut_name_list, load_case_name)
@@ -660,7 +708,7 @@ class GlobalAnalysisApp:
             self.allLegendList = []
 
             for Li, lType in enumerate(loadType):
-                if lType == 'TH' and agg_type != 'Individual':
+                if lType == 'TH' and agg_type != 'Ind':
                     colList[Li] = '#D3D3D3'
             for i in range(1,3):
                 for j in range(1,4):
@@ -685,27 +733,27 @@ class GlobalAnalysisApp:
                 for cI, case in enumerate(load_case_name):
                     filtered_data = data[(data['OutputCase'] == case) & (data['SectionCut'].str.startswith(cutName + ' - '))]
                     if loadType[cI] == 'Lin':
-                        self.plotCases(colList, typeList, cutI, cutName, cI, case, filtered_data, None, True, SF = 1.0, loadLabel = loadLabel[cI])
+                        self.plotCases(colList, typeList, cutI, cutName, cI, case, filtered_data, None, True, SF = 1.0, loadLabel = loadLabel[cI], inUnit = inUnit, outUnit = outUnit)
                     elif loadType[cI] == 'RS':
-                        self.plotCases(colList, typeList, cutI, cutName, cI, case, filtered_data, 'Max', True, SF = 1.0, loadLabel = loadLabel[cI])
-                        self.plotCases(colList, typeList, cutI, cutName, cI, case, filtered_data, 'Max', False, SF = -1.0, loadLabel = loadLabel[cI])
+                        self.plotCases(colList, typeList, cutI, cutName, cI, case, filtered_data, 'Max', True, SF = 1.0, loadLabel = loadLabel[cI], inUnit = inUnit, outUnit = outUnit)
+                        self.plotCases(colList, typeList, cutI, cutName, cI, case, filtered_data, 'Max', False, SF = -1.0, loadLabel = loadLabel[cI], inUnit = inUnit, outUnit = outUnit)
                     elif loadType[cI] == 'NonLin':
-                        self.plotCases(colList, typeList, cutI, cutName, cI, case, filtered_data, 'Max', True, SF = 1.0, loadLabel = loadLabel[cI])
-                        self.plotCases(colList, typeList, cutI, cutName, cI, case, filtered_data, 'Min', False, SF = 1.0, loadLabel = loadLabel[cI])
+                        self.plotCases(colList, typeList, cutI, cutName, cI, case, filtered_data, 'Max', True, SF = 1.0, loadLabel = loadLabel[cI], inUnit = inUnit, outUnit = outUnit)
+                        self.plotCases(colList, typeList, cutI, cutName, cI, case, filtered_data, 'Min', False, SF = 1.0, loadLabel = loadLabel[cI], inUnit = inUnit, outUnit = outUnit)
                     elif loadType[cI] == 'TH':
-                        showLabel = True if agg_type == 'Individual' else False
-                        lineWidth = 2 if agg_type == 'Individual' else 1
-                        self.plotCases(colList, typeList, cutI, cutName, cI, case, filtered_data, 'Max', showLabel, SF = 1.0, loadLabel = loadLabel[cI], lineWidth=lineWidth)
-                        self.plotCases(colList, typeList, cutI, cutName, cI, case, filtered_data, 'Min', False, SF = 1.0, loadLabel = loadLabel[cI], lineWidth=lineWidth)
+                        showLabel = True if agg_type == 'Ind' else False
+                        lineWidth = 2 if agg_type == 'Ind' else 1
+                        self.plotCases(colList, typeList, cutI, cutName, cI, case, filtered_data, 'Max', showLabel, SF = 1.0, loadLabel = loadLabel[cI], lineWidth=lineWidth, inUnit = inUnit, outUnit = outUnit)
+                        self.plotCases(colList, typeList, cutI, cutName, cI, case, filtered_data, 'Min', False, SF = 1.0, loadLabel = loadLabel[cI], lineWidth=lineWidth, inUnit = inUnit, outUnit = outUnit)
                 if agg_type == 'Average':
-                    self.plotCases(['green'], typeList, cutI, cutName, cI, case, avgData, 'Max', True, SF = 1.0, loadLabel = 'Average MCE')
-                    self.plotCases(['green'], typeList, cutI, cutName, cI, case, avgData, 'Min', False, SF = 1.0, loadLabel = 'Average MCE')
+                    self.plotCases(['green'], typeList, cutI, cutName, cI, case, avgData, 'Max', True, SF = 1.0, loadLabel = 'Average MCE', inUnit = inUnit, outUnit = outUnit)
+                    self.plotCases(['green'], typeList, cutI, cutName, cI, case, avgData, 'Min', False, SF = 1.0, loadLabel = 'Average MCE', inUnit = inUnit, outUnit = outUnit)
                 if agg_type == 'Min':
-                    self.plotCases(['green'], typeList, cutI, cutName, cI, case, minData, 'Max', True, SF = 1.0, loadLabel = 'Min MCE')
-                    self.plotCases(['green'], typeList, cutI, cutName, cI, case, maxData, 'Min', False, SF = 1.0, loadLabel = 'Min MCE')
+                    self.plotCases(['green'], typeList, cutI, cutName, cI, case, minData, 'Max', True, SF = 1.0, loadLabel = 'Min MCE', inUnit = inUnit, outUnit = outUnit)
+                    self.plotCases(['green'], typeList, cutI, cutName, cI, case, maxData, 'Min', False, SF = 1.0, loadLabel = 'Min MCE', inUnit = inUnit, outUnit = outUnit)
                 if agg_type == 'Max':
-                    self.plotCases(['green'], typeList, cutI, cutName, cI, case, maxData, 'Max', True, SF = 1.0, loadLabel = 'Max MCE')
-                    self.plotCases(['green'], typeList, cutI, cutName, cI, case, minData, 'Min', False, SF = 1.0, loadLabel = 'Max MCE')
+                    self.plotCases(['green'], typeList, cutI, cutName, cI, case, maxData, 'Max', True, SF = 1.0, loadLabel = 'Max MCE', inUnit = inUnit, outUnit = outUnit)
+                    self.plotCases(['green'], typeList, cutI, cutName, cI, case, minData, 'Min', False, SF = 1.0, loadLabel = 'Max MCE', inUnit = inUnit, outUnit = outUnit)
             
             for i in range(1,3):
                 for j in range(1,4):
@@ -739,25 +787,26 @@ class GlobalAnalysisApp:
                         margin=dict(l=20, r=100, t=60, b=20),
                         )
             
-            self.updateAxis(shear_lims, axial_lims, moment_lims, torsion_lims, height_lims)
+            self.updateAxis(shear_lims, axial_lims, moment_lims, torsion_lims, height_lims, inUnit, outUnit)
             return data.to_dict('records'), self.fig
     
     def runApp(self):
         self.app.run_server(debug=True, port = self.port)     
 
-    def plotCases(self, colList, typeList, cutI, cutName, cI, case, filtered_data, StepType, showLegend, SF=1.0, loadLabel = '', agg_type = 'Individual', lineWidth = 2):
+    def plotCases(self, colList, typeList, cutI, cutName, cI, case, filtered_data, StepType, showLegend, SF=1.0, loadLabel = '', agg_type = 'Ind', lineWidth = 2, inUnit = 'kN,m,C', outUnit = 'kN,m,C'):
         if StepType is not None:
             filtered_data = filtered_data[filtered_data['StepType'] == StepType]
         if loadLabel+'_'+cutName in self.allLegendList or loadLabel == '':
             showLegend = False
         else:
             self.allLegendList.append(loadLabel+'_'+cutName)
-        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=SF*filtered_data['F1'], mode='lines', name=loadLabel+'_'+cutName, line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)], width=lineWidth),showlegend=showLegend, legendgroup=loadLabel+cutName), row=1, col=1, secondary_y=False)
-        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=SF*filtered_data['F2'], mode='lines', name=loadLabel+'_'+cutName, line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)], width=lineWidth),showlegend=False, legendgroup=loadLabel+cutName), row=1, col=2, secondary_y=False)
-        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=SF*filtered_data['F3'], mode='lines', name=loadLabel+'_'+cutName, line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)], width=lineWidth),showlegend=False, legendgroup=loadLabel+cutName), row=1, col=3, secondary_y=False)
-        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=SF*filtered_data['M2'], mode='lines', name=loadLabel+'_'+cutName, line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)], width=lineWidth),showlegend=False, legendgroup=loadLabel+cutName), row=2, col=1, secondary_y=False)
-        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=SF*filtered_data['M1'], mode='lines', name=loadLabel+'_'+cutName, line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)], width=lineWidth),showlegend=False, legendgroup=loadLabel+cutName), row=2, col=2, secondary_y=False)
-        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=SF*filtered_data['M3'], mode='lines', name=loadLabel+'_'+cutName, line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)], width=lineWidth),showlegend=False, legendgroup=loadLabel+cutName), row=2, col=3, secondary_y=False)
+        units = UnitConvertor(inUnit, outUnit)
+        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=units.convert(1,'force')*SF*filtered_data['F1'], mode='lines', name=loadLabel+'_'+cutName, line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)], width=lineWidth),showlegend=showLegend, legendgroup=loadLabel+cutName), row=1, col=1, secondary_y=False)
+        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=units.convert(1,'force')*SF*filtered_data['F2'], mode='lines', name=loadLabel+'_'+cutName, line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)], width=lineWidth),showlegend=False, legendgroup=loadLabel+cutName), row=1, col=2, secondary_y=False)
+        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=units.convert(1,'force')*SF*filtered_data['F3'], mode='lines', name=loadLabel+'_'+cutName, line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)], width=lineWidth),showlegend=False, legendgroup=loadLabel+cutName), row=1, col=3, secondary_y=False)
+        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=units.convert(1,'moment')*SF*filtered_data['M2'], mode='lines', name=loadLabel+'_'+cutName, line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)], width=lineWidth),showlegend=False, legendgroup=loadLabel+cutName), row=2, col=1, secondary_y=False)
+        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=units.convert(1,'moment')*SF*filtered_data['M1'], mode='lines', name=loadLabel+'_'+cutName, line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)], width=lineWidth),showlegend=False, legendgroup=loadLabel+cutName), row=2, col=2, secondary_y=False)
+        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=units.convert(1,'moment')*SF*filtered_data['M3'], mode='lines', name=loadLabel+'_'+cutName, line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)], width=lineWidth),showlegend=False, legendgroup=loadLabel+cutName), row=2, col=3, secondary_y=False)
 
         
 

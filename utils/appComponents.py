@@ -53,6 +53,12 @@ def createSelectComponent(idName, label, **kwargs):
         description = kwargs['description']
     else:
         description = f'Select {label} from the list'
+
+    if 'defaultValue' in kwargs:
+        defaultValue = kwargs['defaultValue']
+    else:
+        defaultValue = None
+
     return dmc.Col([
                     dmc.Select(
                     label=f'Select the name of {label}',
@@ -62,6 +68,7 @@ def createSelectComponent(idName, label, **kwargs):
                     error = True,
                     id=idName,
                     data=values,
+                    value=defaultValue,
                     nothingFound=f'No {label} Found',
                     searchable=True)
     ], span=4)
@@ -100,18 +107,17 @@ def createRadioComponent(idName, **kwargs):
     
     showLabel = kwargs.get('showLabel')
     
-    return dmc.Grid([
-        dmc.Col([
+    return dmc.Col([
                     dmc.RadioGroup(
                         children = dmc.Group([dmc.Radio(label=value, value=value) for value in values]),
                     label=showLabel,
-                    w = 400,
+                    w = 300,
                     value = values[0],
                     description = 'Select the option from the list',
                     id=idName,
                     size = 'sm',
                     mb = 2)
-    ], span=4)])
+    ], span=4)
         
 def createNumberInputComponent(labelPrefix, minValue, maxValue, stepValue, unit):
     return dmc.Grid([
