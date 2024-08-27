@@ -144,7 +144,7 @@ class GlobalAnalysisApp:
                                              placeholder = 'Leave black for aggregation'),
 
                 ]),
-                createRadioComponent(idName='sectionCut-agg-type', values = ['Individual', 'Average', 'Min', 'Max']),
+                createRadioComponent(idName='sectionCut-agg-type', values = ['Individual', 'Average', 'Min', 'Max'], showLabel = 'Aggregation Type'),
 
                 dmc.TextInput(label='Enter the title for the plots',
                         w = 300,
@@ -251,6 +251,8 @@ class GlobalAnalysisApp:
                     createSingleNumberInputComponent(id='vizGenDisp-DriftLim', value = 0.004, 
                                                      label= 'Code Limit for Drift Plots',
                                                      description='Enter drift limits per code'),
+                    # Add a checkbox to show the limit if true
+                    createRadioComponent(idName='vizGenDisp-ShowLimit', values = ['True', 'False'], showLabel = 'Show Limit'),
                 ]),
                 dmc.Grid([
                     createSingleNumberInputComponent(id='vizGenDisp-DriftStep', value = 0.001, 
@@ -360,12 +362,13 @@ class GlobalAnalysisApp:
              State('vizGenDisp-HeightMin', 'data'),
              State('vizGenDisp-HeightMax', 'data'),
              State('vizGenDisp-DriftStep', 'data'),
-             State('vizGenDisp-DriftLim-label', 'data')],
+             State('vizGenDisp-DriftLim-label', 'data'),
+             State('vizGenDisp-ShowLimit', 'value')],
             suppress_callback_exceptions=True
         )
-        def updateCaseGridDisp_VizDisp(data, Dlim, Dmax, Hmin, Hmax, Dstep, DlimName):
-            if data and 'vizDataFileUploaded' in data.keys() and 'heightFileUploaded' in data.keys() and data['vizDataFileUploaded'] == 'Complete' and data['heightFileUploaded'] == 'Complete':
-                return self.updateCaseGridDisp(Dlim, Dmax, Hmin, Hmax, Dstep, DlimName)
+        def updateCaseGridDisp_VizDisp(data, Dlim, Dmax, Hmin, Hmax, Dstep, DlimName, showLimit):
+            if data and 'vizDataFileUploaded' in data.keys() and data['vizDataFileUploaded'] == 'Complete':
+                return self.updateCaseGridDisp(Dlim, Dmax, Hmin, Hmax, Dstep, DlimName, showLimit)
             return no_update, no_update, no_update
         
         # Plot the Generalized Displacement
@@ -383,20 +386,34 @@ class GlobalAnalysisApp:
             State('vizGenDisp-HeightMax', 'value'),
             State('vizGenDisp-DriftStep', 'value'),
             State('vizGenDisp-DriftLim-label', 'value'),
+            State('vizGenDisp-ShowLimit', 'value'),
             suppress_callback_exceptions=True
         )
-        def plotGenDisp(n_clicks, GMlist, caseColor, gridList, dispList, Dlim, Dmax, Hmin, Hmax, Dstep, DlimName):
+        def plotGenDisp(n_clicks, GMlist, caseColor, gridList, dispList, Dlim, Dmax, Hmin, Hmax, Dstep, DlimName, showLimit):
             if n_clicks:
                 if self.conn is not None:
                     self.genDisp = GeneralizedDisplacement(analysisFileConnection = self.conn,
                                                    heightFileConnection = self.height_conn,
                                                    Dlim = Dlim, Dmax=Dmax, DlimName = DlimName, Dstep = Dstep,
-                                                   Hmin=Hmin, Hmax=Hmax)
+                                                   Hmin=Hmin, Hmax=Hmax, showLimit = showLimit)
                     self.genDisp.readMainFile()
                     self.genDisp.readDefinitionFile()
                     self.genDisp.readHeightFile()
                     return False, self.genDisp.plotData(gridList=gridList, GMList=GMlist, dispList=dispList, colList=caseColor.split(','))
             return True, no_update
+        
+        # If vizGenDisp-ShowLimit is False, disable inputs to vizGenDisp-DriftLim and vizGenDisp-DriftLim-label
+        @self.app.callback(
+            Output('vizGenDisp-DriftLim', 'disabled'),
+            Output('vizGenDisp-DriftLim-label', 'disabled'),
+            Input('vizGenDisp-ShowLimit', 'value'),
+            suppress_callback_exceptions=True,
+            prevent_initial_call=True
+        )
+        def disableDriftLimit(showLimit):
+            if showLimit == 'True':
+                return False, False
+            return True, True
 
 
         # Clear the data
@@ -515,12 +532,12 @@ class GlobalAnalysisApp:
         processedData = output.getvalue()
         return processedData
     
-    def updateCaseGridDisp(self, Dlim, Dmax, Hmin, Hmax, Dstep, DlimName):
+    def updateCaseGridDisp(self, Dlim, Dmax, Hmin, Hmax, Dstep, DlimName, showLimit):
         if self.conn is not None:
             self.genDisp = GeneralizedDisplacement(analysisFileConnection = self.conn,
                                                    heightFileConnection = self.height_conn,
                                                    Dlim = Dlim, Dmax=Dmax, DlimName = DlimName, Dstep = Dstep,
-                                                   Hmin=Hmin, Hmax=Hmax)
+                                                   Hmin=Hmin, Hmax=Hmax, showLimit = showLimit)
             return self.genDisp.populateFields()
         return [], [], []
 

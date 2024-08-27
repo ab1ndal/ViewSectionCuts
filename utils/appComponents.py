@@ -98,13 +98,16 @@ def createRadioComponent(idName, **kwargs):
     if not values:
         values = []
     
+    showLabel = kwargs.get('showLabel')
+    
     return dmc.Grid([
         dmc.Col([
                     dmc.RadioGroup(
                         children = dmc.Group([dmc.Radio(label=value, value=value) for value in values]),
-                    label=f'Aggregation Type',
-                    w = 300,
-                    value = "Individual",
+                    label=showLabel,
+                    w = 400,
+                    value = values[0],
+                    description = 'Select the option from the list',
                     id=idName,
                     size = 'sm',
                     mb = 2)

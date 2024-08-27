@@ -37,6 +37,8 @@ class GeneralizedDisplacement:
 
         self.DlimName = kwargs['DlimName']
 
+        self.showLimit = kwargs['showLimit'] == 'True'
+
         self.compiledData = None
         self.LABEL_LEGEND_FONT_SIZE = 8
         self.assignDriftLimit(Dlim = kwargs['Dlim'], Dmax = kwargs['Dmax'], Dstep = kwargs['Dstep'])
@@ -145,15 +147,16 @@ class GeneralizedDisplacement:
         print('Plotting Data')
         plot_files = []
         for g in gridList:
+            print(f'Plotting {g}')
             fig, ax = plt.subplots(1,len(dispList), figsize=(5*len(dispList),5))
+            condition1 = self.compiledData['GenDispl'].str.contains(g+"_")
             for d_i, d in enumerate(dispList):
                 ax[d_i].set_title(f'{g} - {d}')
+                condition3 = self.compiledData['GenDispl'].str.contains(d)
                 for gm_i, gm in enumerate(GMList):
-                    condition1 = self.compiledData['GenDispl'].str.contains(g+"_")
                     condition2 = self.compiledData['OutputCase'] == gm
-                    condition3 = self.compiledData['GenDispl'].str.contains(d)
                     selGrid = self.compiledData[condition1 & condition2 & condition3].reset_index(drop=True).sort_values(by='TopZ', ascending=False)
-                    ax[d_i].step(selGrid['Drift'], selGrid['TopZ'], label=gm, color = colList[gm_i%len(colList)], marker = '.')
+                    ax[d_i].step(selGrid['Drift'], selGrid['TopZ'], label=gm, color = colList[gm_i%len(colList)])
                 self.formataxis(ax[d_i])
             plt.tight_layout()
             #New Save File
@@ -173,8 +176,8 @@ class GeneralizedDisplacement:
     
     def formataxis(self, ax):
         ax.set_xlim(0, self.Dmax)
-        
-        ax.vlines(self.Dlim, self.Hmin, self.Hmax, linestyle='--', color = 'red', linewidth=1.5, label=self.DlimName)
+        if self.showLimit:
+            ax.vlines(self.Dlim, self.Hmin, self.Hmax, linestyle='--', color = 'red', linewidth=1.5, label=self.DlimName)
         ax.set_xticks(np.arange(0, self.Dmax + self.Dstep, self.Dstep))
         ax.set_xticklabels(['{:.1f}%'.format(x*100) for x in ax.get_xticks()], fontsize=self.LABEL_LEGEND_FONT_SIZE)
         ax.set_yticks(self.heightData['SAP2000Elev'])
