@@ -192,7 +192,7 @@ class GeneralizedDisplacement:
             fig, ax = plt.subplots(1,len(dispList), figsize=(5*len(dispList),5))
             condition2 = self.compiledData['OutputCase'] == gm
             for d_i, d in enumerate(dispList):
-                ax[d_i].set_title(f'{gm} - {d} ({title[d_i]})')
+                ax[d_i].set_title(f'{nameList[gm_i]} - {d} ({title[d_i]})')
                 condition3 = self.compiledData['GenDispl'].str.contains(d)
                 for g_i, g in enumerate(gridList):
                     condition1 = self.compiledData['GenDispl'].str.contains(g+"_")
