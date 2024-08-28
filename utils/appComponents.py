@@ -124,13 +124,13 @@ def createRadioComponent(idName, **kwargs):
 def createNumberInputComponent(labelPrefix, minValue, maxValue, stepValue, unit):
     return dmc.Grid([
             dmc.GridCol([
-                dmc.NumberInput(min=-1e10, max=1e10,allowDecimal=True,decimalScale=3,label=f'{labelPrefix} - Minimum ({unit})', id=f'{labelPrefix.lower()}-min', w=300, value=minValue),
+                dmc.NumberInput(min=-1e10, max=1e10,allowDecimal=True,decimalScale=3,thousandSeparator=",", label=f'{labelPrefix} - Minimum ({unit})', id=f'{labelPrefix.lower()}-min', w=300, value=minValue),
             ], span=4),
             dmc.GridCol([
-                dmc.NumberInput(min=-1e10, max=1e10,allowDecimal=True,decimalScale=3,label=f'{labelPrefix} - Maximum ({unit})', id=f'{labelPrefix.lower()}-max', w=300, value=maxValue),
+                dmc.NumberInput(min=-1e10, max=1e10,allowDecimal=True,decimalScale=3,thousandSeparator=",", label=f'{labelPrefix} - Maximum ({unit})', id=f'{labelPrefix.lower()}-max', w=300, value=maxValue),
             ], span=4),
             dmc.GridCol([
-                dmc.NumberInput(min=-1e10, max=1e10,allowDecimal=True,decimalScale=3,label=f'{labelPrefix} - Step Size ({unit})', id=f'{labelPrefix.lower()}-step', w=300, value=stepValue),
+                dmc.NumberInput(min=-1e10, max=1e10,allowDecimal=True,decimalScale=3,thousandSeparator=",", label=f'{labelPrefix} - Step Size ({unit})', id=f'{labelPrefix.lower()}-step', w=300, value=stepValue),
             ], span=4),
         ])
 

@@ -457,14 +457,18 @@ class GlobalAnalysisApp:
                         data = ['solid', 'dash', 'dot', 'longdash', 'dashdot', 'longdashdot'],
                         nothingFoundMessage=f'No LineType Found',
                         searchable=True), 
-                    style={'textAlign': 'center', 'padding': '0 15px'})
+                    style={'textAlign': 'center', 'padding': '0 15px'}),
+                    html.Td(dmc.TextInput(
+                        id = {"type": "sectionCut-cut-id", "index": cut},
+                        value = cut, required=True,error=''), style={'textAlign': 'center', 'padding': '0 15px'})
                 ])
                 rows.append(row)
             return html.Table([
                 html.Thead(
                     html.Tr([
                         html.Th("Cut Name", style={'textAlign': 'center', 'padding': '0 15px'}),
-                        html.Th("Line Type", style={'textAlign': 'center', 'padding': '0 15px'})
+                        html.Th("Line Type", style={'textAlign': 'center', 'padding': '0 15px'}),
+                        html.Th("Cut ID", style={'textAlign': 'center', 'padding': '0 15px'})
                     ])
                 ),
                 html.Tbody(rows)
@@ -716,7 +720,8 @@ class GlobalAnalysisApp:
             [State('moment-min', 'value'),State('moment-max', 'value'),State('moment-step', 'value')],
             [State('torsion-min', 'value'),State('torsion-max', 'value'),State('torsion-step', 'value')],
             [State('height-min', 'value'),State('height-max', 'value'),State('height-step', 'value')],
-            State('sectionCut-agg-type', 'value'), State('sectionCut-input-unit', 'value'), State('sectionCut-output-unit', 'value')],
+            State('sectionCut-agg-type', 'value'), State('sectionCut-input-unit', 'value'), State('sectionCut-output-unit', 'value'), 
+            State({'type': 'sectionCut-cut-id', 'index': ALL}, 'value')],
             prevent_initial_call=True,
             suppress_callback_exceptions=True
         )(self.plotData)
@@ -909,7 +914,7 @@ class GlobalAnalysisApp:
             self.fig.data = []
             return [], self.fig
     
-    def plotData(self, plotClicks, cut_name_list, typeList, load_case_name, colList, loadLabel, loadType, plot_title, shear_lims, axial_lims, moment_lims, torsion_lims, height_lims, agg_type, inUnit, outUnit):
+    def plotData(self, plotClicks, cut_name_list, typeList, load_case_name, colList, loadLabel, loadType, plot_title, shear_lims, axial_lims, moment_lims, torsion_lims, height_lims, agg_type, inUnit, outUnit, cut_id):
         if plotClicks:
             self.fig.data = []
             data = getCutForces(self.conn, cut_name_list, load_case_name)
@@ -947,27 +952,27 @@ class GlobalAnalysisApp:
                 for cI, case in enumerate(load_case_name):
                     filtered_data = data[(data['OutputCase'] == case) & (data['SectionCut'].str.startswith(cutName + ' - '))]
                     if loadType[cI] == 'Lin':
-                        self.plotCases(colList, typeList, cutI, cutName, cI, case, filtered_data, None, True, SF = 1.0, loadLabel = loadLabel[cI], inUnit = inUnit, outUnit = outUnit)
+                        self.plotCases(colList, typeList, cutI, cut_id[cutI], cI, case, filtered_data, None, True, SF = 1.0, loadLabel = loadLabel[cI], inUnit = inUnit, outUnit = outUnit)
                     elif loadType[cI] == 'RS':
-                        self.plotCases(colList, typeList, cutI, cutName, cI, case, filtered_data, 'Max', True, SF = 1.0, loadLabel = loadLabel[cI], inUnit = inUnit, outUnit = outUnit)
-                        self.plotCases(colList, typeList, cutI, cutName, cI, case, filtered_data, 'Max', False, SF = -1.0, loadLabel = loadLabel[cI], inUnit = inUnit, outUnit = outUnit)
+                        self.plotCases(colList, typeList, cutI, cut_id[cutI], cI, case, filtered_data, 'Max', True, SF = 1.0, loadLabel = loadLabel[cI], inUnit = inUnit, outUnit = outUnit)
+                        self.plotCases(colList, typeList, cutI, cut_id[cutI], cI, case, filtered_data, 'Max', False, SF = -1.0, loadLabel = loadLabel[cI], inUnit = inUnit, outUnit = outUnit)
                     elif loadType[cI] == 'NonLin':
-                        self.plotCases(colList, typeList, cutI, cutName, cI, case, filtered_data, 'Max', True, SF = 1.0, loadLabel = loadLabel[cI], inUnit = inUnit, outUnit = outUnit)
-                        self.plotCases(colList, typeList, cutI, cutName, cI, case, filtered_data, 'Min', False, SF = 1.0, loadLabel = loadLabel[cI], inUnit = inUnit, outUnit = outUnit)
+                        self.plotCases(colList, typeList, cutI, cut_id[cutI], cI, case, filtered_data, 'Max', True, SF = 1.0, loadLabel = loadLabel[cI], inUnit = inUnit, outUnit = outUnit)
+                        self.plotCases(colList, typeList, cutI, cut_id[cutI], cI, case, filtered_data, 'Min', False, SF = 1.0, loadLabel = loadLabel[cI], inUnit = inUnit, outUnit = outUnit)
                     elif loadType[cI] == 'TH':
                         showLabel = True if agg_type == 'Ind' else False
                         lineWidth = 2 if agg_type == 'Ind' else 1
-                        self.plotCases(colList, typeList, cutI, cutName, cI, case, filtered_data, 'Max', showLabel, SF = 1.0, loadLabel = loadLabel[cI], lineWidth=lineWidth, inUnit = inUnit, outUnit = outUnit)
-                        self.plotCases(colList, typeList, cutI, cutName, cI, case, filtered_data, 'Min', False, SF = 1.0, loadLabel = loadLabel[cI], lineWidth=lineWidth, inUnit = inUnit, outUnit = outUnit)
+                        self.plotCases(colList, typeList, cutI, cut_id[cutI], cI, case, filtered_data, 'Max', showLabel, SF = 1.0, loadLabel = loadLabel[cI], lineWidth=lineWidth, inUnit = inUnit, outUnit = outUnit)
+                        self.plotCases(colList, typeList, cutI, cut_id[cutI], cI, case, filtered_data, 'Min', False, SF = 1.0, loadLabel = loadLabel[cI], lineWidth=lineWidth, inUnit = inUnit, outUnit = outUnit)
                 if agg_type == 'Average':
-                    self.plotCases(['green'], typeList, cutI, cutName, cI, case, avgData, 'Max', True, SF = 1.0, loadLabel = 'Average MCE', inUnit = inUnit, outUnit = outUnit)
-                    self.plotCases(['green'], typeList, cutI, cutName, cI, case, avgData, 'Min', False, SF = 1.0, loadLabel = 'Average MCE', inUnit = inUnit, outUnit = outUnit)
+                    self.plotCases(['green'], typeList, cutI, cut_id[cutI], cI, case, avgData, 'Max', True, SF = 1.0, loadLabel = 'Average MCE', inUnit = inUnit, outUnit = outUnit)
+                    self.plotCases(['green'], typeList, cutI, cut_id[cutI], cI, case, avgData, 'Min', False, SF = 1.0, loadLabel = 'Average MCE', inUnit = inUnit, outUnit = outUnit)
                 if agg_type == 'Min':
-                    self.plotCases(['green'], typeList, cutI, cutName, cI, case, minData, 'Max', True, SF = 1.0, loadLabel = 'Min MCE', inUnit = inUnit, outUnit = outUnit)
-                    self.plotCases(['green'], typeList, cutI, cutName, cI, case, maxData, 'Min', False, SF = 1.0, loadLabel = 'Min MCE', inUnit = inUnit, outUnit = outUnit)
+                    self.plotCases(['green'], typeList, cutI, cut_id[cutI], cI, case, minData, 'Max', True, SF = 1.0, loadLabel = 'Min MCE', inUnit = inUnit, outUnit = outUnit)
+                    self.plotCases(['green'], typeList, cutI, cut_id[cutI], cI, case, maxData, 'Min', False, SF = 1.0, loadLabel = 'Min MCE', inUnit = inUnit, outUnit = outUnit)
                 if agg_type == 'Max':
-                    self.plotCases(['green'], typeList, cutI, cutName, cI, case, maxData, 'Max', True, SF = 1.0, loadLabel = 'Max MCE', inUnit = inUnit, outUnit = outUnit)
-                    self.plotCases(['green'], typeList, cutI, cutName, cI, case, minData, 'Min', False, SF = 1.0, loadLabel = 'Max MCE', inUnit = inUnit, outUnit = outUnit)
+                    self.plotCases(['green'], typeList, cutI, cut_id[cutI], cI, case, maxData, 'Max', True, SF = 1.0, loadLabel = 'Max MCE', inUnit = inUnit, outUnit = outUnit)
+                    self.plotCases(['green'], typeList, cutI, cut_id[cutI], cI, case, minData, 'Min', False, SF = 1.0, loadLabel = 'Max MCE', inUnit = inUnit, outUnit = outUnit)
             
             for i in range(1,3):
                 for j in range(1,4):
@@ -1008,7 +1013,10 @@ class GlobalAnalysisApp:
         self.app.run_server(debug=True, port = self.port)     
 
     def plotCases(self, colList, typeList, cutI, cutName, cI, case, filtered_data, StepType, showLegend, SF=1.0, loadLabel = '', agg_type = 'Ind', lineWidth = 2, inUnit = 'kN,m,C', outUnit = 'kN,m,C'):
-        legendEntry = wrap_text(loadLabel+'_'+cutName)
+        if cutName:
+            legendEntry = wrap_text(loadLabel+'_'+cutName)
+        else:
+            legendEntry = wrap_text(loadLabel)
         if StepType is not None:
             filtered_data = filtered_data[filtered_data['StepType'] == StepType]
         if legendEntry in self.allLegendList or loadLabel == '':

@@ -164,12 +164,13 @@ class GeneralizedDisplacement:
         # Plot the data
         print('Plotting Data')
         plot_files = []
+        title = ['A-Canyon', 'X-Canyon']
         for g in gridList:
             print(f'Plotting {g}')
             fig, ax = plt.subplots(1,len(dispList), figsize=(5*len(dispList),5))
             condition1 = self.compiledData['GenDispl'].str.contains(g+"_")
             for d_i, d in enumerate(dispList):
-                ax[d_i].set_title(f'{g} - {d}')
+                ax[d_i].set_title(f'{g} - {d} ({title[d_i]})')
                 condition3 = self.compiledData['GenDispl'].str.contains(d)
                 for gm_i, gm in enumerate(GMList):
                     condition2 = self.compiledData['OutputCase'] == gm
@@ -191,7 +192,7 @@ class GeneralizedDisplacement:
             fig, ax = plt.subplots(1,len(dispList), figsize=(5*len(dispList),5))
             condition2 = self.compiledData['OutputCase'] == gm
             for d_i, d in enumerate(dispList):
-                ax[d_i].set_title(f'{gm} - {d}')
+                ax[d_i].set_title(f'{gm} - {d} ({title[d_i]})')
                 condition3 = self.compiledData['GenDispl'].str.contains(d)
                 for g_i, g in enumerate(gridList):
                     condition1 = self.compiledData['GenDispl'].str.contains(g+"_")
