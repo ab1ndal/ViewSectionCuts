@@ -11,6 +11,8 @@ import tempfile
 from dash import dcc
 import zipfile
 
+plt.ioff()
+
 # To run please run "python -m GeneralizedDisplacement.plotGenDisp" from the main folder
 
 # The analysis file should have the following tables:
@@ -54,7 +56,7 @@ class GeneralizedDisplacement:
         self.GMList = self.getGMList()
         self.GridList = self.getGridList()
         self.DispList = self.getDispList()
-        return self.GMList, self.GridList, self.DispList
+        return self.GMList, self.GridList, self.GridList, self.DispList, self.DispList
 
     def readMainFile(self):
         #self.connection = connectDB(self.analysisFile)
@@ -106,7 +108,7 @@ class GeneralizedDisplacement:
         self.Hmin = Hmin
         self.Hmax = Hmax
 
-    def processData(self, gridList, GMList, dispList, colList=['#1f77b4','#ff7f0e']):
+    def processData(self, gridList, GMList, dispList, colList):
         self.compiledData = pd.DataFrame(columns=['GenDispl', 'OutputCase', 'Disp', 'TopJoint', 'TopZ', 'BotJoint', 'BotZ', 'Drift'])
         genDispDefn = self.genDispDefn
         jointData = self.jointData
@@ -149,7 +151,7 @@ class GeneralizedDisplacement:
                     self.compiledData = pd.concat([self.compiledData, finalData], ignore_index=True)
         return self.compiledData
     
-    def plotData(self, gridList, GMList, dispList, colList=['#1f77b4','#ff7f0e']):
+    def plotData(self, gridList, GMList, dispList, colList, nameList):
         # Generate the compiled data
         self.processData(gridList, GMList, dispList, colList)
         # Temp path
@@ -172,7 +174,7 @@ class GeneralizedDisplacement:
                 for gm_i, gm in enumerate(GMList):
                     condition2 = self.compiledData['OutputCase'] == gm
                     selGrid = self.compiledData[condition1 & condition2 & condition3].reset_index(drop=True).sort_values(by='TopZ', ascending=False)
-                    ax[d_i].step(selGrid['Drift'], selGrid['TopZ'], label=gm, color = colList[gm_i%len(colList)])
+                    ax[d_i].step(selGrid['Drift'], selGrid['TopZ'], label=nameList[gm_i], color = colList[gm_i%len(colList)])
                 self.formataxis(ax[d_i])
             plt.tight_layout()
             #New Save File
@@ -182,6 +184,26 @@ class GeneralizedDisplacement:
             #Old Save File
             #plt.savefig(inputFileLoc + f'\\DRIFTS\\{g}_Drift.png', dpi = 300)
             plt.close()
+
+        colListGM = distinctipy.get_colors(len(gridList), exclude_colors = [(1,1,1)])
+        for gm_i, gm in enumerate(GMList):
+            print(f'Plotting {gm}')
+            fig, ax = plt.subplots(1,len(dispList), figsize=(5*len(dispList),5))
+            condition2 = self.compiledData['OutputCase'] == gm
+            for d_i, d in enumerate(dispList):
+                ax[d_i].set_title(f'{gm} - {d}')
+                condition3 = self.compiledData['GenDispl'].str.contains(d)
+                for g_i, g in enumerate(gridList):
+                    condition1 = self.compiledData['GenDispl'].str.contains(g+"_")
+                    selGrid = self.compiledData[condition1 & condition2 & condition3].reset_index(drop=True).sort_values(by='TopZ', ascending=False)
+                    ax[d_i].step(selGrid['Drift'], selGrid['TopZ'], label=g, color = colListGM[g_i%len(colListGM)])
+                self.formataxis(ax[d_i])
+            plt.tight_layout()
+            #New Save File
+            plot_file_path = os.path.join(output_dir, f'{gm}_Drift.png')
+            plt.savefig(plot_file_path, dpi = 300)
+            plot_files.append(plot_file_path)
+            
         print('Data Plotted and Saved')
         zip_file_path = os.path.join(output_dir, 'drifts_plots.zip')
         with zipfile.ZipFile(zip_file_path, 'w') as zipf:

@@ -1,4 +1,4 @@
-from dash import Dash, html, dash_table, dcc, Input, Output, callback, callback_context, no_update, State
+from dash import Dash, html, dash_table, dcc, Input, Output, callback, callback_context, no_update, State, _dash_renderer, ALL
 import pandas as pd
 from utils.readFile import connectDB, getData
 from SectionCutForces.plotGlobalForces import getCutForces, getCutGroup
@@ -15,8 +15,9 @@ from utils.appComponents import createUploadComponent, createMultiSelectComponen
 from GeneralizedDisplacement.defineGenDisp import defineGenDisp
 from GeneralizedDisplacement.plotGenDisp import GeneralizedDisplacement
 from utils.unitConvertor import UnitConvertor
-from utils.extraTools import wrap_text
-
+from utils.extraTools import wrap_text, rgb2hex
+_dash_renderer._set_react_version("18.2.0")
+Dash(external_stylesheets=dmc.styles.ALL)
 
 class GlobalAnalysisApp:
     def __init__(self):
@@ -43,7 +44,9 @@ class GlobalAnalysisApp:
         self.registerCallbacks()
         
     def createMenu(self):
-        self.app.layout = dmc.MantineProvider(
+        self.app.layout = html.Div(
+                style = {"padding": "20px"},
+                children =[dmc.MantineProvider(
             theme={"colorScheme": "light"},
             children = [
                 dcc.Store(id='file-upload-status'),
@@ -52,19 +55,19 @@ class GlobalAnalysisApp:
                     [
                         dmc.TabsList(
                             [
-                                dmc.Tab("Section Cuts", value="section-cuts"),
-                                dmc.Tab("Drifts", value="drifts"),
+                                dmc.TabsTab("Section Cuts", value="section-cuts"),
+                                dmc.TabsTab("Drifts", value="drifts"),
                             ]
                         ),
                         dmc.TabsPanel(
                             children=[
                                 dmc.Tabs(
                                     [dmc.TabsList(
-                                        [dmc.Tab("Define", value="define-section-cuts"),
-                                        dmc.Tab("Visualize", value="visualize-section-cuts")]
+                                        [dmc.TabsTab("Define", value="define-section-cuts"),
+                                        dmc.TabsTab("Visualize", value="visualize-section-cuts")]
                                     ),
-                                    dmc.TabsPanel(id = 'define-section-cuts', value="define-section-cuts"),
-                                    dmc.TabsPanel(id = 'visualize-section-cuts', value="visualize-section-cuts")
+                                    dmc.TabsPanel(id = 'define-section-cuts', value="define-section-cuts", children=[]),
+                                    dmc.TabsPanel(id = 'visualize-section-cuts', value="visualize-section-cuts", children = [])
                                     ],
                                     color = "blue",
                                     orientation = "horizontal",
@@ -74,11 +77,11 @@ class GlobalAnalysisApp:
                             children=[
                                 dmc.Tabs(
                                     [dmc.TabsList(
-                                        [dmc.Tab("Define", value="define-drifts"),
-                                        dmc.Tab("Visualize", value="visualize-drifts")]
+                                        [dmc.TabsTab("Define", value="define-drifts"),
+                                        dmc.TabsTab("Visualize", value="visualize-drifts")]
                                     ),
-                                    dmc.TabsPanel(id='define-drifts', value="define-drifts"),
-                                    dmc.TabsPanel(id='visualize-drifts', value="visualize-drifts")
+                                    dmc.TabsPanel(id='define-drifts', value="define-drifts", children = []),
+                                    dmc.TabsPanel(id='visualize-drifts', value="visualize-drifts", children = [])
                                     ],
                                     color = "blue",
                                     orientation = "horizontal",
@@ -89,7 +92,7 @@ class GlobalAnalysisApp:
                     orientation = "horizontal",
                 )
             ]
-        )
+        )])
 
     def defineSectionCut(self):
         return dmc.MantineProvider(
@@ -124,28 +127,29 @@ class GlobalAnalysisApp:
                 createUploadComponent('upload-height-data', 'Height Label'),
                 dmc.Grid([
                     createMultiSelectComponent('cut-name-list', 'Cuts'),
-                    createTextInputComponent(idName='line-type-list', 
-                                             label='Enter the line types for Cuts', 
-                                             description='Enter line types, separated by commas', 
-                                             value='solid'),
-                    createTextInputComponent(idName='load-case-types', 
-                                             label='Enter Load Case type (Lin, NonLin, RS, TH)', 
-                                             description='Enter Load Case types, separated by commas', 
-                                             value=''),
-                ]),
-                dmc.Grid([
                     createMultiSelectComponent('load-case-name', 'Load Cases'),
-                    createTextInputComponent(idName='load-case-colors', 
-                                             label='Enter the colors for Load Cases', 
-                                             description='Enter Load Case colors, separated by commas', 
-                                             value='red,blue,black'),
-                    createTextInputComponent(idName='load-case-labels', 
-                                             label='Enter the labels for Load Cases', 
-                                             description='Enter Load Case labels, separated by commas', 
-                                             value='', 
-                                             placeholder = 'Leave black for aggregation'),
-
                 ]),
+                dmc.Accordion(
+                    children=[
+                        dmc.AccordionItem(
+                            [
+                                dmc.AccordionControl(dmc.Text("Click to reveal plot formatting options...", fw=500, size = 'lg', c='blue')),
+                                dmc.AccordionPanel(
+                                    dmc.Grid([
+                                        dmc.GridCol(
+                                            html.Div(id='sectionCut-cutName-lineType-Table', children=[]),
+                                            span=6,
+                                            style={'display': 'flex', 'justifyContent': 'center'}
+                                        ),
+                                        dmc.GridCol(
+                                            html.Div(id='sectionCut-case-id-color-type-Table', children=[]),
+                                            span=6,
+                                            style={'display': 'flex', 'justifyContent': 'center'}
+                                        ),
+                                    ], gutter=0),
+                                )
+                            ], value = 'ShowSectionCutPlotFormatting')
+                    ], multiple = True, variant = 'filled', chevronPosition = 'left'),
                 
                 dmc.Grid([
                     createSelectComponent('sectionCut-input-unit', values=['lb,in,F', 'lb,ft,F', 'kip,in,F', 'kip,ft,F', 'kN,mm,C', 
@@ -163,12 +167,29 @@ class GlobalAnalysisApp:
                         w = 300,
                         id='plot-title'),
 
-                createNumberInputComponent('Shear',    -25e2,   25e2, 500, 'kN'),
-                createNumberInputComponent('Axial',        0,   25e3, 5e3, 'kN'),
-                createNumberInputComponent('Moment',    -1e5,    2e5, 5e4, 'kNm'),
-                createNumberInputComponent('Torsion',   -1e4,    1e4, 5e3, 'kNm'),
-                createNumberInputComponent('Height', -60.365, 29.835,  10, 'm'),
+                # Put the following into an accordion
+                #createNumberInputComponent('Shear',    -25e2,   25e2, 500, 'kN'),
+                #createNumberInputComponent('Axial',        0,   25e3, 5e3, 'kN'),
+                #createNumberInputComponent('Moment',    -1e5,    2e5, 5e4, 'kNm'),
+                #createNumberInputComponent('Torsion',   -1e4,    1e4, 5e3, 'kNm'),
+                #createNumberInputComponent('Height', -60.365, 29.835,  10, 'm'),
                 
+                dmc.Accordion(
+                    children=[
+                        dmc.AccordionItem(
+                            [
+                                dmc.AccordionControl(dmc.Text("Click to reveal plot limit options...", fw=500, size = 'lg', c='blue')),
+                                dmc.AccordionPanel(
+                                    html.Div([createNumberInputComponent('Shear',    -25e2,   25e2, 500, 'kN'),
+                                    createNumberInputComponent('Axial',        0,   25e3, 5e3, 'kN'),
+                                    createNumberInputComponent('Moment',    -1e5,    2e5, 5e4, 'kNm'),
+                                    createNumberInputComponent('Torsion',   -1e4,    1e4, 5e3, 'kNm'),
+                                    createNumberInputComponent('Height', -60.365, 29.835,  10, 'm')])
+                                )
+                            ], value = 'ShowSectionCutPlotLimit')
+                    ], multiple = True, variant = 'filled', chevronPosition = 'left'),
+                            
+
                 #horizontal_spacing=0.05
                 dmc.Group([
                 dmc.Button("Submit", id='submit-button', color="blue"),
@@ -178,12 +199,12 @@ class GlobalAnalysisApp:
                 dmc.Button("Clear Data", id='clear-button', color="red"),
                 ]),
                 dmc.Grid([
-                    dmc.Col([
+                    dmc.GridCol([
                         dash_table.DataTable(id='data-table', page_size=12, style_table={'overflowX': 'auto'})
                     ], span=12),
                 ]),
                 dmc.Grid([
-                        dmc.Col(dcc.Graph(id='subplot-graph', figure = {}, 
+                        dmc.GridCol(dcc.Graph(id='subplot-graph', figure = {}, 
                                         config={'displayModeBar':True, 
                                                 'displaylogo':False, 
                                                 'toImageButtonOptions': {
@@ -247,15 +268,12 @@ class GlobalAnalysisApp:
                                       description='The file should contain the following tables: "Floor Elevations"'),
                 dmc.Grid([
                     createMultiSelectComponent('vizGenDisp-GMlist', 'Load Cases'),
-                    createTextInputComponent(idName = 'vizGenDisp-case-color', 
-                                             label = 'Enter colors for Load Cases', 
-                                             description = 'Enter values, separated by commas', 
-                                             value='#1f77b4,#ff7f0e'),            
-                ]),
-                dmc.Grid([
                     createMultiSelectComponent('vizGenDisp-grid-list', 'Grids'),
-                    createMultiSelectComponent('vizGenDisp-disp-list', 'Displacements'),
+                    createMultiSelectComponent('vizGenDisp-disp-list', 'Displacements'),  
                 ]),
+
+                html.Div(id='vizGenDisp-GMlist-Color-Table', children=[]),
+                
                 dmc.Grid([
                     createSelectComponent('vizGenDisp-input-unit', values=['lb,in,F', 'lb,ft,F', 'kip,in,F', 'kip,ft,F', 'kN,mm,C', 
                                                                            'kN,m,C', 'Kgf,mm,C', 'Kgf,m,C', 'N,mm,C', 'N,m,C', 
@@ -422,6 +440,166 @@ class GlobalAnalysisApp:
                 
             return no_update, no_update, no_update, no_update, no_update
 
+        @self.app.callback(
+            Output('sectionCut-cutName-lineType-Table', 'children'),
+            Input('cut-name-list', 'value'),
+        )
+        def updateCutNameLineTypeTable(cutList):
+            if not cutList:
+                return []
+            rows = []
+            for cut in cutList:
+                row = html.Tr([
+                    html.Td(cut, style={'textAlign': 'center', 'padding': '0 15px'}),
+                    html.Td(dmc.Select(
+                        id = {"type": "sectionCut-lineType", "index": cut},
+                        value = 'solid', 
+                        data = ['solid', 'dash', 'dot', 'longdash', 'dashdot', 'longdashdot'],
+                        nothingFoundMessage=f'No LineType Found',
+                        searchable=True), 
+                    style={'textAlign': 'center', 'padding': '0 15px'})
+                ])
+                rows.append(row)
+            return html.Table([
+                html.Thead(
+                    html.Tr([
+                        html.Th("Cut Name", style={'textAlign': 'center', 'padding': '0 15px'}),
+                        html.Th("Line Type", style={'textAlign': 'center', 'padding': '0 15px'})
+                    ])
+                ),
+                html.Tbody(rows)
+            ], style={'margin': 'auto'})
+        
+        @self.app.callback(
+            Output('sectionCut-case-id-color-type-Table', 'children'),
+            Input('load-case-name', 'value'),
+        )
+        def updateCaseIDColorTypeTable(caseList):
+            if not caseList:
+                return []
+            rows = []
+            colList = [rgb2hex(color) for color in distinctipy.get_colors(len(caseList), exclude_colors=[(1,1,1)])]
+            for cI, case in enumerate(caseList):
+                row = html.Tr([
+                    html.Td(case, style={'textAlign': 'center', 'padding': '0 15px'}),
+                    html.Td(dmc.TextInput(
+                        id = {"type": "sectionCut-case-id", "index": case},
+                        value = case, required=True,error=''), style={'textAlign': 'center', 'padding': '0 15px'}),
+                    html.Td(dmc.ColorInput(
+                        id = {"type": "sectionCut-case-color", "index": case},
+                        value = colList[cI],
+                        swatches=[ 
+                        "#25262b","#868e96","#fa5252","#e64980","#be4bdb",
+                        "#7950f2","#4c6ef5","#228be6","#15aabf","#12b886",
+                        "#40c057","#82c91e","#fab005","#fd7e14"],
+                        required=True,error=''), 
+                        style={'textAlign': 'center', 'padding': '0 15px'}),
+                    html.Td(dmc.Select(
+                        id = {"type": "sectionCut-case-type", "index": case},
+                        value = 'TH' if 'MCE' in case else 'NonLin' if '1.0D' in case else 'RS' if 'SLE' in case else 'Lin', 
+                        data = ['Lin', 'NonLin', 'RS', 'TH'],
+                        nothingFoundMessage=f'No Load Case Type Found',
+                        searchable=True), 
+                        style={'textAlign': 'center', 'padding': '0 15px'})
+                ])
+                rows.append(row)
+            return html.Table([
+                html.Thead(
+                    html.Tr([
+                        html.Th("Case Name", style={'textAlign': 'center', 'padding': '0 15px'}),
+                        html.Th("Case ID", style={'textAlign': 'center', 'padding': '0 15px'}),
+                        html.Th("Case Color", style={'textAlign': 'center', 'padding': '0 15px'}),
+                        html.Th("Case Type", style={'textAlign': 'center', 'padding': '0 15px'})
+                    ])
+                ),
+                html.Tbody(rows)
+            ], style={'margin': 'auto'})
+        
+        #Validate sectionCut-case-id and sectionCut-case-color
+        @self.app.callback(
+            [Output({'type': 'sectionCut-case-id', 'index': ALL}, 'error'),
+            Output({'type': 'sectionCut-case-color', 'index': ALL}, 'error')],
+            [Input({'type': 'sectionCut-case-id', 'index': ALL}, 'value'),
+            Input({'type': 'sectionCut-case-color', 'index': ALL}, 'value')],
+            prevent_initial_call=True
+        )
+        def validate_table_names_and_colors(names, colors):
+            name_errors = [None] * len(names)
+            color_errors = [None] * len(colors)
+            if names:
+                for i, name in enumerate(names):
+                    if not name.strip():
+                        name_errors[i] = 'Case ID cannot be blank.'
+            
+            if colors:
+                for i, color in enumerate(colors):
+                    if not color:
+                        color_errors[i] = 'Case Color cannot be blank.'
+            
+            return name_errors, color_errors
+
+        
+        #Validate the field vizGenDisp-GMname and vizGenDisp-GMcolor
+        @self.app.callback(
+            [Output({'type': 'vizGenDisp-GMname', 'index': ALL}, 'error'),
+            Output({'type': 'vizGenDisp-GMcolor', 'index': ALL}, 'error')],
+            [Input({'type': 'vizGenDisp-GMname', 'index': ALL}, 'value'),
+            Input({'type': 'vizGenDisp-GMcolor', 'index': ALL}, 'value')],
+            prevent_initial_call=True
+        )
+        def validate_table_names_and_colors(names, colors):
+            name_errors = [None] * len(names)
+            color_errors = [None] * len(colors)
+            if names:
+                for i, name in enumerate(names):
+                    if not name.strip():
+                        name_errors[i] = 'Load Case Name cannot be blank.'
+            
+            if colors:
+                for i, color in enumerate(colors):
+                    if not color:
+                        color_errors[i] = 'Load Case Color cannot be blank.'
+            
+            return name_errors, color_errors
+        
+        @self.app.callback(
+            Output('vizGenDisp-GMlist-Color-Table', 'children'),
+            Input('vizGenDisp-GMlist', "value")
+        )
+        def updateGMlistColorTable(GMlist):
+            print("In updateGMlistColorTable")
+            if not GMlist:
+                return []
+            rows = []
+            colList = [rgb2hex(color) for color in distinctipy.get_colors(len(GMlist), exclude_colors=[(1,1,1)])]
+            for i, GM in enumerate(GMlist):
+                row = html.Tr([
+                    html.Td(GM, style={'textAlign': 'center', 'padding': '0 15px'}),
+                    html.Td(dmc.TextInput(
+                        id = {"type": "vizGenDisp-GMname", "index": GM},
+                        value = GM, required=True,error=''), style={'textAlign': 'center', 'padding': '0 15px'}),
+                    html.Td(dmc.ColorInput(
+                        id = {"type": "vizGenDisp-GMcolor", "index": GM},
+                        value = colList[i],
+                        swatches=[
+                        "#25262b","#868e96","#fa5252","#e64980","#be4bdb",
+                        "#7950f2","#4c6ef5","#228be6","#15aabf","#12b886",
+                        "#40c057","#82c91e","#fab005","#fd7e14"],
+                        required=True,error=''), 
+                        style={'textAlign': 'center', 'padding': '0 15px'})
+                ])
+                rows.append(row)
+            return html.Table([
+                html.Thead(
+                    html.Tr([
+                        html.Th("Load Case Name", style={'textAlign': 'center', 'padding': '0 15px'}),
+                        html.Th("Load Case Identifier", style={'textAlign': 'center', 'padding': '0 15px'}),
+                        html.Th("Load Case Color", style={'textAlign': 'center', 'padding': '0 15px'})
+                    ])
+                ),
+                html.Tbody(rows)
+            ], style={'margin': 'auto'})
+
         #Update the Load Case Names and Section Cut Names
         @self.app.callback(
         [Output('load-case-name', 'data'),
@@ -438,7 +616,9 @@ class GlobalAnalysisApp:
         @self.app.callback(
             [Output('vizGenDisp-GMlist', 'data'),
              Output('vizGenDisp-grid-list', 'data'),
-             Output('vizGenDisp-disp-list', 'data')],
+             Output('vizGenDisp-grid-list', 'value'),
+             Output('vizGenDisp-disp-list', 'data'),
+             Output('vizGenDisp-disp-list', 'value')],
             [Input('file-upload-status', 'data'),
              State('vizGenDisp-DriftLim', 'data'),
              State('vizGenDisp-DriftMax', 'data'),
@@ -451,8 +631,9 @@ class GlobalAnalysisApp:
         )
         def updateCaseGridDisp_VizDisp(data, Dlim, Dmax, Hmin, Hmax, Dstep, DlimName, showLimit):
             if data and 'vizDataFileUploaded' in data.keys() and data['vizDataFileUploaded'] == 'Complete':
+                print(self.updateCaseGridDisp(Dlim, Dmax, Hmin, Hmax, Dstep, DlimName, showLimit))
                 return self.updateCaseGridDisp(Dlim, Dmax, Hmin, Hmax, Dstep, DlimName, showLimit)
-            return no_update, no_update, no_update
+            return no_update, no_update, no_update, no_update, no_update
         
         # Plot the Generalized Displacement
         @self.app.callback(
@@ -460,7 +641,8 @@ class GlobalAnalysisApp:
             Output('download-GenDispPlot-excel', 'data'),
             Input('plot-button-vizGenDisp', 'n_clicks'),
             State('vizGenDisp-GMlist', 'value'),
-            State('vizGenDisp-case-color', 'value'),
+            State({'type': 'vizGenDisp-GMcolor', 'index': ALL}, 'value'),
+            State({'type': 'vizGenDisp-GMname', 'index': ALL}, 'value'),
             State('vizGenDisp-grid-list', 'value'),
             State('vizGenDisp-disp-list', 'value'),
             State('vizGenDisp-DriftLim', 'value'),
@@ -472,7 +654,7 @@ class GlobalAnalysisApp:
             State('vizGenDisp-ShowLimit', 'value'),
             suppress_callback_exceptions=True
         )
-        def plotGenDisp(n_clicks, GMlist, caseColor, gridList, dispList, Dlim, Dmax, Hmin, Hmax, Dstep, DlimName, showLimit):
+        def plotGenDisp(n_clicks, GMlist, caseColor, caseName, gridList, dispList, Dlim, Dmax, Hmin, Hmax, Dstep, DlimName, showLimit):
             if n_clicks:
                 if self.conn is not None:
                     self.genDisp = GeneralizedDisplacement(analysisFileConnection = self.conn,
@@ -482,7 +664,7 @@ class GlobalAnalysisApp:
                     self.genDisp.readMainFile()
                     self.genDisp.readDefinitionFile()
                     self.genDisp.readHeightFile()
-                    return False, self.genDisp.plotData(gridList=gridList, GMList=GMlist, dispList=dispList, colList=caseColor.split(','))
+                    return False, self.genDisp.plotData(gridList=gridList, GMList=GMlist, dispList=dispList, colList=caseColor, nameList=caseName)
             return True, no_update
         
         # If vizGenDisp-ShowLimit is False, disable inputs to vizGenDisp-DriftLim and vizGenDisp-DriftLim-label
@@ -526,8 +708,8 @@ class GlobalAnalysisApp:
             [Output('data-table', 'data', allow_duplicate=True),
             Output('subplot-graph', 'figure', allow_duplicate=True)],
             [Input('submit-button', 'n_clicks')],
-            [State('cut-name-list', 'value'),State('line-type-list', 'value'),
-            State('load-case-name', 'value'),State('load-case-colors', 'value'),State('load-case-labels', 'value'),State('load-case-types', 'value'),
+            [State('cut-name-list', 'value'),State({'type': 'sectionCut-lineType', 'index': ALL}, 'value'),
+            State('load-case-name', 'value'),State({'type': 'sectionCut-case-color', 'index': ALL}, 'value'),State({'type': 'sectionCut-case-id', 'index': ALL}, 'value'),State({'type': 'sectionCut-case-type', 'index': ALL}, 'value'),
             State('plot-title', 'value'),
             [State('shear-min', 'value'),State('shear-max', 'value'),State('shear-step', 'value')],
             [State('axial-min', 'value'),State('axial-max', 'value'),State('axial-step', 'value')],
@@ -622,7 +804,7 @@ class GlobalAnalysisApp:
                                                    Dlim = Dlim, Dmax=Dmax, DlimName = DlimName, Dstep = Dstep,
                                                    Hmin=Hmin, Hmax=Hmax, showLimit = showLimit)
             return self.genDisp.populateFields()
-        return [], [], []
+        return [], [], [], [], []
 
 
     def updateCutCaseName(self, contents):
@@ -727,20 +909,18 @@ class GlobalAnalysisApp:
             self.fig.data = []
             return [], self.fig
     
-    def plotData(self, plotClicks, cut_name_list, line_type_list, load_case_name, load_case_color, load_case_label, load_case_type, plot_title, shear_lims, axial_lims, moment_lims, torsion_lims, height_lims, agg_type, inUnit, outUnit):
+    def plotData(self, plotClicks, cut_name_list, typeList, load_case_name, colList, loadLabel, loadType, plot_title, shear_lims, axial_lims, moment_lims, torsion_lims, height_lims, agg_type, inUnit, outUnit):
         if plotClicks:
             self.fig.data = []
             data = getCutForces(self.conn, cut_name_list, load_case_name)
-            def rgb2hex(color):
-                return "#{:02x}{:02x}{:02x}".format(int(color[0]*255),int(color[1]*255),int(color[2]*255))
             
-            defaultColor = [rgb2hex(color) for color in distinctipy.get_colors(len(load_case_name),[(1,1,1)])]
-            colList = load_case_color.split(',') if load_case_color else defaultColor
+            #defaultColor = [rgb2hex(color) for color in distinctipy.get_colors(len(load_case_name),[(1,1,1)])]
+            #colList = load_case_color.split(',') if load_case_color else defaultColor
 
             
-            typeList = line_type_list.split(',') if line_type_list else ['solid', 'dash', 'dot', 'dashdot', 'longdash', 'longdashdot']
-            loadLabel = load_case_label.split(',') if load_case_label else load_case_name
-            loadType = load_case_type.split(',') if load_case_type else ['NonLin']*len(load_case_name)
+            #typeList = line_type_list.split(',') if line_type_list else ['solid', 'dash', 'dot', 'dashdot', 'longdash', 'longdashdot']
+            #loadLabel = load_case_label.split(',') if load_case_label else load_case_name
+            #loadType = load_case_type.split(',') if load_case_type else ['NonLin']*len(load_case_name)
             self.allLegendList = []
 
             for Li, lType in enumerate(loadType):
@@ -748,9 +928,7 @@ class GlobalAnalysisApp:
                     colList[Li] = '#D3D3D3'
             for i in range(1,3):
                 for j in range(1,4):
-                    self.fig.add_trace(go.Scatter(y=[], x=[], mode='lines'), row=i, col=j, secondary_y=True)
-        
-            
+                    self.fig.add_trace(go.Scatter(y=[], x=[], mode='lines'), row=i, col=j, secondary_y=True)            
 
             for cutI, cutName in enumerate(cut_name_list):
                 # For each cutName in the list find average for all load case name

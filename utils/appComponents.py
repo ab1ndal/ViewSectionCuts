@@ -7,9 +7,9 @@ def createUploadComponent(idName, label, **kwargs):
     else:
         description = None
     return dmc.Grid([
-                dmc.Col([
+                dmc.GridCol([
                     dmc.Text(f"Upload {label} File", fw=500, size = 'sm'),
-                    dmc.Text(description, size = 'xs', color='dimmed'),
+                    dmc.Text(description, size = 'xs'),
                     dcc.Upload(
                         id=idName,
                         children=html.Div([
@@ -32,7 +32,7 @@ def createUploadComponent(idName, label, **kwargs):
             ])
 
 def createMultiSelectComponent(idName, label):
-    return dmc.Col([
+    return dmc.GridCol([
                     dmc.MultiSelect(
                     label=f'Select the names of {label}',
                     w = 300,
@@ -41,9 +41,11 @@ def createMultiSelectComponent(idName, label):
                     error = True,
                     id=idName,
                     data=[],
-                    nothingFound=f'No {label} Found',
+                    value=[],
+                    nothingFoundMessage=f'No {label} Found',
                     searchable=True)
     ], span=4)
+
 
 def createSelectComponent(idName, label, **kwargs):
     values = kwargs.get('values')
@@ -59,7 +61,7 @@ def createSelectComponent(idName, label, **kwargs):
     else:
         defaultValue = None
 
-    return dmc.Col([
+    return dmc.GridCol([
                     dmc.Select(
                     label=f'Select the name of {label}',
                     w = 300,
@@ -69,7 +71,7 @@ def createSelectComponent(idName, label, **kwargs):
                     id=idName,
                     data=values,
                     value=defaultValue,
-                    nothingFound=f'No {label} Found',
+                    nothingFoundMessage=f'No {label} Found',
                     searchable=True)
     ], span=4)
 
@@ -89,7 +91,7 @@ def createTextInputComponent(idName, label, **kwargs):
     else:
         description = None
         
-    return dmc.Col([
+    return dmc.GridCol([
                 dmc.TextInput(label=label,
                         w = 300,
                         error = True,
@@ -107,7 +109,7 @@ def createRadioComponent(idName, **kwargs):
     
     showLabel = kwargs.get('showLabel')
     
-    return dmc.Col([
+    return dmc.GridCol([
                     dmc.RadioGroup(
                         children = dmc.Group([dmc.Radio(label=value, value=value) for value in values]),
                     label=showLabel,
@@ -121,14 +123,14 @@ def createRadioComponent(idName, **kwargs):
         
 def createNumberInputComponent(labelPrefix, minValue, maxValue, stepValue, unit):
     return dmc.Grid([
-            dmc.Col([
-                dmc.NumberInput(min=-1e10, max=1e10,precision=3,label=f'{labelPrefix} - Minimum ({unit})', id=f'{labelPrefix.lower()}-min', w=300, value=minValue),
+            dmc.GridCol([
+                dmc.NumberInput(min=-1e10, max=1e10,allowDecimal=True,decimalScale=3,label=f'{labelPrefix} - Minimum ({unit})', id=f'{labelPrefix.lower()}-min', w=300, value=minValue),
             ], span=4),
-            dmc.Col([
-                dmc.NumberInput(min=-1e10, max=1e10,precision=3,label=f'{labelPrefix} - Maximum ({unit})', id=f'{labelPrefix.lower()}-max', w=300, value=maxValue),
+            dmc.GridCol([
+                dmc.NumberInput(min=-1e10, max=1e10,allowDecimal=True,decimalScale=3,label=f'{labelPrefix} - Maximum ({unit})', id=f'{labelPrefix.lower()}-max', w=300, value=maxValue),
             ], span=4),
-            dmc.Col([
-                dmc.NumberInput(min=-1e10, max=1e10,precision=3,label=f'{labelPrefix} - Step Size ({unit})', id=f'{labelPrefix.lower()}-step', w=300, value=stepValue),
+            dmc.GridCol([
+                dmc.NumberInput(min=-1e10, max=1e10,allowDecimal=True,decimalScale=3,label=f'{labelPrefix} - Step Size ({unit})', id=f'{labelPrefix.lower()}-step', w=300, value=stepValue),
             ], span=4),
         ])
 
@@ -147,8 +149,10 @@ def createSingleNumberInputComponent(**kwargs):
         placeholder = kwargs['placeholder']
     if 'description' in kwargs:
         description = kwargs['description']
-    return dmc.Col([
-                dmc.NumberInput(min=-1e10, max=1e10,precision=3,
+    return dmc.GridCol([
+                dmc.NumberInput(min=-1e10, max=1e10,
+                                allowDecimal=True,
+                                decimalScale=3,
                                 label=label, 
                                 id=id, 
                                 w=300, 
