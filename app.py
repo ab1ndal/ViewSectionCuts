@@ -263,13 +263,13 @@ class GlobalAnalysisApp:
             theme={"colorScheme": "light"},
             children=[
                 createUploadComponent('vizGenDisp-upload-analysis', 'General Displacement Analysis File', 
-                                      description='The file should contain the following tables: "Jt Displacements - Generalized", "Joint Coordinates", "Gen Displ Defs 1 - Translation"'),
+                                      description='The file should contain the following tables: "Jt Displacements - Generalized", "Joint Coordinates", "Gen Displ Defs 1 - Translation", "Joint Displacements", "Groups 2 - Assignments"'),
                 createUploadComponent('vizGenDisp-upload-height', 'Height Label',
                                       description='The file should contain the following tables: "Floor Elevations"'),
                 dmc.Grid([
                     createMultiSelectComponent('vizGenDisp-GMlist', 'Load Cases'),
                     createMultiSelectComponent('vizGenDisp-grid-list', 'Grids'),
-                    createMultiSelectComponent('vizGenDisp-disp-list', 'Displacements'),  
+                    createMultiSelectComponent('vizGenDisp-disp-list', 'Displacements', data=['U1', 'U2'], value=['U1', 'U2']),  
                 ]),
 
                 html.Div(id='vizGenDisp-GMlist-Color-Table', children=[]),
@@ -283,6 +283,7 @@ class GlobalAnalysisApp:
                                                                            'kN,m,C', 'Kgf,mm,C', 'Kgf,m,C', 'N,mm,C', 'N,m,C', 
                                                                            'Tonf,mm,C','Tonf,m,C', 'kN,cm,C', 'Kgf,cm,C', 'N,cm,C', 
                                                                            'Tonf,cm,C'], label='Output Unit', defaultValue='kip,in,F'),
+                    createMultiSelectComponent('vizGenDisp-DispDrift', 'Component', data=['Drift', 'Disp'], value=['Drift', 'Disp']),
                 ]),
                 dmc.Grid([
                     createTextInputComponent(idName = 'vizGenDisp-DriftLim-label', 
@@ -590,6 +591,13 @@ class GlobalAnalysisApp:
                         "#7950f2","#4c6ef5","#228be6","#15aabf","#12b886",
                         "#40c057","#82c91e","#fab005","#fd7e14"],
                         required=True,error=''), 
+                        style={'textAlign': 'center', 'padding': '0 15px'}),
+                    html.Td(dmc.Select(
+                        id = {"type": "vizGenDisp-case-type", "index": GM},
+                        value = 'TH' if 'MCE' in GM else 'NonLin' if '1.0D' in GM else 'RS' if 'SLE' in GM else 'Lin', 
+                        data = ['Lin', 'NonLin', 'RS', 'TH'],
+                        nothingFoundMessage=f'No Load Case Type Found',
+                        searchable=True), 
                         style={'textAlign': 'center', 'padding': '0 15px'})
                 ])
                 rows.append(row)
@@ -598,7 +606,8 @@ class GlobalAnalysisApp:
                     html.Tr([
                         html.Th("Load Case Name", style={'textAlign': 'center', 'padding': '0 15px'}),
                         html.Th("Load Case Identifier", style={'textAlign': 'center', 'padding': '0 15px'}),
-                        html.Th("Load Case Color", style={'textAlign': 'center', 'padding': '0 15px'})
+                        html.Th("Load Case Color", style={'textAlign': 'center', 'padding': '0 15px'}),
+                        html.Th("Load Case Type", style={'textAlign': 'center', 'padding': '0 15px'})
                     ])
                 ),
                 html.Tbody(rows)
@@ -656,15 +665,29 @@ class GlobalAnalysisApp:
             State('vizGenDisp-DriftStep', 'value'),
             State('vizGenDisp-DriftLim-label', 'value'),
             State('vizGenDisp-ShowLimit', 'value'),
+            State('vizGenDisp-DispDrift', 'value'),
+            State({'type':'vizGenDisp-case-type', 'index': ALL}, 'value'),
+            State('vizGenDisp-DispMin', 'value'),
+            State('vizGenDisp-DispMax', 'value'),
+            State('vizGenDisp-DispStep', 'value'),
+            State('vizGenDisp-input-unit', 'value'),
+            State('vizGenDisp-output-unit', 'value'),
             suppress_callback_exceptions=True
         )
-        def plotGenDisp(n_clicks, GMlist, caseColor, caseName, gridList, dispList, Dlim, Dmax, Hmin, Hmax, Dstep, DlimName, showLimit):
+        def plotGenDisp(n_clicks, GMlist, caseColor, caseName, gridList, dispList, 
+                        Dlim, Dmax, Hmin, Hmax, Dstep, DlimName, showLimit, plotList, caseType, 
+                        DispMin, DispMax, DispStep, inUnit, outUnit):
             if n_clicks:
                 if self.conn is not None:
+                    units = UnitConvertor(inUnit, outUnit)
+                    lenConv = units.convert_length(1)
+                    lenUnit = units.printUnit('length')
                     self.genDisp = GeneralizedDisplacement(analysisFileConnection = self.conn,
                                                    heightFileConnection = self.height_conn,
                                                    Dlim = Dlim, Dmax=Dmax, DlimName = DlimName, Dstep = Dstep,
-                                                   Hmin=Hmin, Hmax=Hmax, showLimit = showLimit)
+                                                   Hmin=Hmin, Hmax=Hmax, showLimit = showLimit, plotList = plotList, 
+                                                   caseType = caseType, DispMin = DispMin, DispMax = DispMax, 
+                                                   DispStep = DispStep, lenConv = lenConv, lenUnit = lenUnit)
                     self.genDisp.readMainFile()
                     self.genDisp.readDefinitionFile()
                     self.genDisp.readHeightFile()
@@ -805,7 +828,6 @@ class GlobalAnalysisApp:
     def updateCaseGridDisp(self, Dlim, Dmax, Hmin, Hmax, Dstep, DlimName, showLimit):
         if self.conn is not None:
             self.genDisp = GeneralizedDisplacement(analysisFileConnection = self.conn,
-                                                   heightFileConnection = self.height_conn,
                                                    Dlim = Dlim, Dmax=Dmax, DlimName = DlimName, Dstep = Dstep,
                                                    Hmin=Hmin, Hmax=Hmax, showLimit = showLimit)
             return self.genDisp.populateFields()

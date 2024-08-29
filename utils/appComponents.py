@@ -31,7 +31,16 @@ def createUploadComponent(idName, label, **kwargs):
                 ], span=12),
             ])
 
-def createMultiSelectComponent(idName, label):
+def createMultiSelectComponent(idName, label, **kwargs):
+    if 'data' in kwargs:
+        data = kwargs['data']
+    else:
+        data = []
+    if 'value' in kwargs:
+        value = kwargs['value']
+    else:
+        value = []
+
     return dmc.GridCol([
                     dmc.MultiSelect(
                     label=f'Select the names of {label}',
@@ -40,8 +49,8 @@ def createMultiSelectComponent(idName, label):
                     required=True,
                     error = True,
                     id=idName,
-                    data=[],
-                    value=[],
+                    data=data,
+                    value=value,
                     nothingFoundMessage=f'No {label} Found',
                     searchable=True)
     ], span=4)
