@@ -10,8 +10,9 @@ import time
 import tempfile
 from dash import dcc
 import zipfile
-
-plt.ioff()
+from matplotlib.backends.backend_pdf import PdfPages
+import matplotlib
+matplotlib.use('Agg')
 
 # To run please run "python -m GeneralizedDisplacement.plotGenDisp" from the main folder
 
@@ -192,6 +193,8 @@ class GeneralizedDisplacement:
         output_dir = os.path.join(tempfile.gettempdir(), 'disp_drifts_plots')
         os.makedirs(output_dir, exist_ok=True)
         excel_file_path = os.path.join(output_dir, 'outputDriftDisp.xlsx')
+
+        pdf_file_path = os.path.join(output_dir, 'disp_drifts_plots.pdf')
         # Save the compiled data
         #self.compiledDrift.to_excel(excel_file_path, index=False)
         with pd.ExcelWriter(excel_file_path) as writer:
@@ -204,114 +207,130 @@ class GeneralizedDisplacement:
         plot_files = []
         title = ['A-Canyon', 'X-Canyon']
         colListGM = distinctipy.get_colors(len(gridList), exclude_colors = [(1,1,1)])
-        if 'Drift' in self.plotList:
-            for g in gridList:
-                print(f'Plotting {g}')
-                fig, ax = plt.subplots(1,len(dispList), figsize=(5*len(dispList),5))
-                condition1 = self.compiledDrift['GenDispl'].str.contains(g+"_")
-                for d_i, d in enumerate(dispList):
-                    ax[d_i].set_title(f'{g} - {d} ({title[d_i]})')
-                    condition3 = self.compiledDrift['GenDispl'].str.contains(d)
-                    for gm_i, gm in enumerate(GMList):
-                        condition2 = self.compiledDrift['OutputCase'] == gm
-                        selGrid = self.compiledDrift[condition1 & condition2 & condition3].reset_index(drop=True).sort_values(by='TopZ', ascending=False)
-                        ax[d_i].step(selGrid['Drift'], selGrid['TopZ'], label=nameList[gm_i], color = colList[gm_i%len(colList)])
-                    self.formataxis(ax[d_i], 'Drift')
-                plt.tight_layout()
-                #New Save File
-                plot_file_path = os.path.join(output_dir, f'{g}_Drift.png')
-                plt.savefig(plot_file_path, dpi = 300)
-                plot_files.append(plot_file_path)
-                #Old Save File
-                #plt.savefig(inputFileLoc + f'\\DRIFTS\\{g}_Drift.png', dpi = 300)
-                plt.close()
 
-            
-            for gm_i, gm in enumerate(GMList):
-                print(f'Plotting {gm}')
-                fig, ax = plt.subplots(1,len(dispList), figsize=(5*len(dispList),5))
-                condition2 = self.compiledDrift['OutputCase'] == gm
-                for d_i, d in enumerate(dispList):
-                    ax[d_i].set_title(f'{nameList[gm_i]} - {d} ({title[d_i]})')
-                    condition3 = self.compiledDrift['GenDispl'].str.contains(d)
-                    for g_i, g in enumerate(gridList):
-                        condition1 = self.compiledDrift['GenDispl'].str.contains(g+"_")
-                        selGrid = self.compiledDrift[condition1 & condition2 & condition3].reset_index(drop=True).sort_values(by='TopZ', ascending=False)
-                        ax[d_i].step(selGrid['Drift'], selGrid['TopZ'], label=g, color = colListGM[g_i%len(colListGM)])
-                    self.formataxis(ax[d_i], 'Drift')
-                plt.tight_layout()
-                #New Save File
-                plot_file_path = os.path.join(output_dir, f'{gm}_Drift.png')
-                plt.savefig(plot_file_path, dpi = 300)
-                plot_files.append(plot_file_path)
-        if 'Disp' in self.plotList:
-            for g in gridList:
-                fig, ax = plt.subplots(1,len(dispList), figsize=(5*len(dispList),5))
-                condition1 = self.compiledDisp['Grid'] == g
-                for gm_i, gm in enumerate(GMList):
-                    condition2 = self.compiledDisp['OutputCase'] == gm
-                    selGrid = self.compiledDisp[condition1 & condition2].reset_index(drop=True).sort_values(by='Z', ascending=False)
+        with PdfPages(pdf_file_path) as pdf:
+            if 'Drift' in self.plotList:
+                for g in gridList:
+                    print(f'Plotting {g}')
+                    fig, ax = plt.subplots(1,len(dispList), figsize=(5*len(dispList),5))
+                    condition1 = self.compiledDrift['GenDispl'].str.contains(g+"_")
                     for d_i, d in enumerate(dispList):
                         ax[d_i].set_title(f'{g} - {d} ({title[d_i]})')
-                        if self.caseType[gm_i] == 'Lin':
-                            ax[d_i].plot(self.lenConv*selGrid[f'U{d_i+1}'], selGrid['Z'], label=nameList[gm_i], color = colList[gm_i%len(colList)])
-                        elif self.caseType[gm_i] == 'NonLin':
-                            maxSelGrid = selGrid[selGrid['StepType'] == 'Max']
-                            ax[d_i].plot(self.lenConv*maxSelGrid[f'U{d_i+1}'], maxSelGrid['Z'], label=nameList[gm_i], color = colList[gm_i%len(colList)])
-                        elif self.caseType[gm_i] == 'RS':
-                            maxSelGrid = selGrid[selGrid['StepType'] == 'Max']
-                            ax[d_i].plot(self.lenConv*maxSelGrid[f'U{d_i+1}'], maxSelGrid['Z'], label=nameList[gm_i], color = colList[gm_i%len(colList)])
-                            ax[d_i].plot(-self.lenConv*maxSelGrid[f'U{d_i+1}'], maxSelGrid['Z'], color = colList[gm_i%len(colList)])
-                        
-                        else:
-                            maxSelGrid = selGrid[selGrid['StepType'] == 'Max']
-                            minSelGrid = selGrid[selGrid['StepType'] == 'Min']
-                            ax[d_i].plot(self.lenConv*maxSelGrid[f'U{d_i+1}'], maxSelGrid['Z'], label=nameList[gm_i], color = colList[gm_i%len(colList)])
-                            ax[d_i].plot(self.lenConv*minSelGrid[f'U{d_i+1}'], minSelGrid['Z'], color = colList[gm_i%len(colList)])
-                        self.formataxis(ax[d_i], 'Disp')
-                plt.tight_layout()
-                #New Save File
-                plot_file_path = os.path.join(output_dir, f'{g}_Disp.png')
-                plt.savefig(plot_file_path, dpi = 300)
-                plot_files.append(plot_file_path)
-                #Old Save File
-                #plt.savefig(inputFileLoc + f'\\DRIFTS\\{g}_Disp.png', dpi = 300)
-                plt.close()
-            for gm_i, gm in enumerate(GMList):
-                fig, ax = plt.subplots(1,len(dispList), figsize=(5*len(dispList),5))
-                condition2 = self.compiledDisp['OutputCase'] == gm
-                for g_i, g in enumerate(gridList):
-                    condition1 = self.compiledDisp['Grid'] == g
-                    selGrid = self.compiledDisp[condition1 & condition2].reset_index(drop=True).sort_values(by='Z', ascending=False)
+                        condition3 = self.compiledDrift['GenDispl'].str.contains(d)
+                        for gm_i, gm in enumerate(GMList):
+                            condition2 = self.compiledDrift['OutputCase'] == gm
+                            selGrid = self.compiledDrift[condition1 & condition2 & condition3].reset_index(drop=True).sort_values(by='TopZ', ascending=False)
+                            ax[d_i].step(selGrid['Drift'], selGrid['TopZ'], label=nameList[gm_i], color = colList[gm_i%len(colList)])
+                        self.formataxis(ax[d_i], 'Drift')
+                    plt.tight_layout()
+                    #New Save File
+                    plot_file_path = os.path.join(output_dir, f'{g}_Drift.png')
+                    plt.savefig(plot_file_path, dpi = 300)
+                    plot_files.append(plot_file_path)
+                    #Old Save File
+                    pdf.savefig(fig)
+                    #plt.savefig(inputFileLoc + f'\\DRIFTS\\{g}_Drift.png', dpi = 300)
+                    plt.close()
+
+                
+                for gm_i, gm in enumerate(GMList):
+                    print(f'Plotting {gm}')
+                    fig, ax = plt.subplots(1,len(dispList), figsize=(5*len(dispList),5))
+                    condition2 = self.compiledDrift['OutputCase'] == gm
                     for d_i, d in enumerate(dispList):
                         ax[d_i].set_title(f'{nameList[gm_i]} - {d} ({title[d_i]})')
-                        if self.caseType[gm_i] == 'Lin':
-                            ax[d_i].plot(self.lenConv*selGrid[f'U{d_i+1}'], selGrid['Z'], label=g, color = colListGM[g_i%len(colListGM)])
-                        elif self.caseType[gm_i] == 'NonLin':
-                            maxSelGrid = selGrid[selGrid['StepType'] == 'Max']
-                            ax[d_i].plot(self.lenConv*maxSelGrid[f'U{d_i+1}'], maxSelGrid['Z'], label=g, color = colListGM[g_i%len(colListGM)])
-                        elif self.caseType[gm_i] == 'RS':
-                            maxSelGrid = selGrid[selGrid['StepType'] == 'Max']
-                            ax[d_i].plot(self.lenConv*maxSelGrid[f'U{d_i+1}'], maxSelGrid['Z'], label=g, color = colListGM[g_i%len(colListGM)])
-                            ax[d_i].plot(-self.lenConv*maxSelGrid[f'U{d_i+1}'], maxSelGrid['Z'], color = colListGM[g_i%len(colListGM)])
-                        else:
-                            maxSelGrid = selGrid[selGrid['StepType'] == 'Max']
-                            minSelGrid = selGrid[selGrid['StepType'] == 'Min']
-                            ax[d_i].plot(self.lenConv*maxSelGrid[f'U{d_i+1}'], maxSelGrid['Z'], label=g, color = colListGM[g_i%len(colListGM)])
-                            ax[d_i].plot(self.lenConv*minSelGrid[f'U{d_i+1}'], minSelGrid['Z'], color = colListGM[g_i%len(colListGM)])
-                        self.formataxis(ax[d_i], 'Disp')
-                plt.tight_layout()
-                #New Save File
-                plot_file_path = os.path.join(output_dir, f'{gm}_Disp.png')
-                plt.savefig(plot_file_path, dpi = 300)
-                plot_files.append(plot_file_path)
-                plt.close()            
+                        condition3 = self.compiledDrift['GenDispl'].str.contains(d)
+                        for g_i, g in enumerate(gridList):
+                            condition1 = self.compiledDrift['GenDispl'].str.contains(g+"_")
+                            selGrid = self.compiledDrift[condition1 & condition2 & condition3].reset_index(drop=True).sort_values(by='TopZ', ascending=False)
+                            ax[d_i].step(selGrid['Drift'], selGrid['TopZ'], label=g, color = colListGM[g_i%len(colListGM)])
+                        self.formataxis(ax[d_i], 'Drift')
+                    plt.tight_layout()
+                    #New Save File
+                    plot_file_path = os.path.join(output_dir, f'{gm}_Drift.png')
+                    plt.savefig(plot_file_path, dpi = 300)
+                    plot_files.append(plot_file_path)
+                    pdf.savefig(fig)
+                    plt.close()
+
+            if 'Disp' in self.plotList:
+                for g in gridList:
+                    fig, ax = plt.subplots(1,len(dispList), figsize=(5*len(dispList),5))
+                    condition1 = self.compiledDisp['Grid'] == g
+                    for gm_i, gm in enumerate(GMList):
+                        condition2 = self.compiledDisp['OutputCase'] == gm
+                        selGrid = self.compiledDisp[condition1 & condition2].reset_index(drop=True).sort_values(by='Z', ascending=False)
+                        for d_i, d in enumerate(dispList):
+                            ax[d_i].set_title(f'{g} - {d} ({title[d_i]})')
+                            if self.caseType[gm_i] == 'Lin':
+                                ax[d_i].plot(self.lenConv*selGrid[f'U{d_i+1}'], selGrid['Z'], label=nameList[gm_i], color = colList[gm_i%len(colList)])
+                            elif self.caseType[gm_i] == 'NonLin':
+                                maxSelGrid = selGrid[selGrid['StepType'] == 'Max']
+                                ax[d_i].plot(self.lenConv*maxSelGrid[f'U{d_i+1}'], maxSelGrid['Z'], label=nameList[gm_i], color = colList[gm_i%len(colList)])
+                            elif self.caseType[gm_i] == 'RS':
+                                maxSelGrid = selGrid[selGrid['StepType'] == 'Max']
+                                ax[d_i].plot(self.lenConv*maxSelGrid[f'U{d_i+1}'], maxSelGrid['Z'], label=nameList[gm_i], color = colList[gm_i%len(colList)])
+                                ax[d_i].plot(-self.lenConv*maxSelGrid[f'U{d_i+1}'], maxSelGrid['Z'], color = colList[gm_i%len(colList)])
+                            
+                            else:
+                                maxSelGrid = selGrid[selGrid['StepType'] == 'Max']
+                                minSelGrid = selGrid[selGrid['StepType'] == 'Min']
+                                ax[d_i].plot(self.lenConv*maxSelGrid[f'U{d_i+1}'], maxSelGrid['Z'], label=nameList[gm_i], color = colList[gm_i%len(colList)])
+                                ax[d_i].plot(self.lenConv*minSelGrid[f'U{d_i+1}'], minSelGrid['Z'], color = colList[gm_i%len(colList)])
+                            
+                    for i in range(len(dispList)):
+                        ax[i].vlines(0, self.Hmin, self.Hmax, linestyle='--', color = 'black', linewidth=1)
+                        self.formataxis(ax[i], 'Disp')
+                    plt.tight_layout()
+                    #New Save File
+                    plot_file_path = os.path.join(output_dir, f'{g}_Disp.png')
+                    plt.savefig(plot_file_path, dpi = 300)
+                    plot_files.append(plot_file_path)
+                    #Old Save File
+                    pdf.savefig(fig)
+                    #plt.savefig(inputFileLoc + f'\\DRIFTS\\{g}_Disp.png', dpi = 300)
+                    plt.close()
+                for gm_i, gm in enumerate(GMList):
+                    fig, ax = plt.subplots(1,len(dispList), figsize=(5*len(dispList),5))
+                    condition2 = self.compiledDisp['OutputCase'] == gm
+                    for g_i, g in enumerate(gridList):
+                        condition1 = self.compiledDisp['Grid'] == g
+                        selGrid = self.compiledDisp[condition1 & condition2].reset_index(drop=True).sort_values(by='Z', ascending=False)
+                        for d_i, d in enumerate(dispList):
+                            ax[d_i].set_title(f'{nameList[gm_i]} - {d} ({title[d_i]})')
+                            if self.caseType[gm_i] == 'Lin':
+                                ax[d_i].plot(self.lenConv*selGrid[f'U{d_i+1}'], selGrid['Z'], label=g, color = colListGM[g_i%len(colListGM)])
+                            elif self.caseType[gm_i] == 'NonLin':
+                                maxSelGrid = selGrid[selGrid['StepType'] == 'Max']
+                                ax[d_i].plot(self.lenConv*maxSelGrid[f'U{d_i+1}'], maxSelGrid['Z'], label=g, color = colListGM[g_i%len(colListGM)])
+                            elif self.caseType[gm_i] == 'RS':
+                                maxSelGrid = selGrid[selGrid['StepType'] == 'Max']
+                                ax[d_i].plot(self.lenConv*maxSelGrid[f'U{d_i+1}'], maxSelGrid['Z'], label=g, color = colListGM[g_i%len(colListGM)])
+                                ax[d_i].plot(-self.lenConv*maxSelGrid[f'U{d_i+1}'], maxSelGrid['Z'], color = colListGM[g_i%len(colListGM)])
+                            else:
+                                maxSelGrid = selGrid[selGrid['StepType'] == 'Max']
+                                minSelGrid = selGrid[selGrid['StepType'] == 'Min']
+                                ax[d_i].plot(self.lenConv*maxSelGrid[f'U{d_i+1}'], maxSelGrid['Z'], label=g, color = colListGM[g_i%len(colListGM)])
+                                ax[d_i].plot(self.lenConv*minSelGrid[f'U{d_i+1}'], minSelGrid['Z'], color = colListGM[g_i%len(colListGM)])
+                            
+                    for i in range(len(dispList)):
+                        ax[i].vlines(0, self.Hmin, self.Hmax, linestyle='--', color = 'black', linewidth=1)
+                        self.formataxis(ax[i], 'Disp')
+
+                    plt.tight_layout()
+                    #New Save File
+                    plot_file_path = os.path.join(output_dir, f'{gm}_Disp.png')
+                    plt.savefig(plot_file_path, dpi = 300)
+                    plot_files.append(plot_file_path)
+                    pdf.savefig(fig)
+                    plt.close()            
         print('Data Plotted and Saved')
         zip_file_path = os.path.join(output_dir, 'disp_drifts_plots.zip')
         with zipfile.ZipFile(zip_file_path, 'w') as zipf:
             zipf.write(excel_file_path, os.path.basename(excel_file_path))
             for plot_file in plot_files:
                 zipf.write(plot_file, os.path.basename(plot_file))
+            zipf.write(pdf_file_path, os.path.basename(pdf_file_path))
         return dcc.send_file(zip_file_path, filename = 'disp_drifts_plots.zip')
     
     def formataxis(self, ax, plotType):
