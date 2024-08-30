@@ -34,6 +34,13 @@ class GlobalAnalysisApp:
         self.port = 8050
         self.server = self.app.server
         self.allLegendList = []
+        self.fileUploadProgress = {'upload-sectioncut-data-progress':0,
+                                  'upload-height-data-progress':0,
+                                  'upload-gendisp-group-progress':0,
+                                  'vizGenDisp-upload-analysis-progress':0,
+                                  'vizGenDisp-upload-height-progress':0}
+        
+        self.uploadCallbackRunning = False
 
         # Create subplots
         self.fig = make_subplots(rows=2, cols=3, subplot_titles=('F1 (A-Canyon)', 'F2 (X-Canyon)', 'F3 (Vertical)', 'M2 (A-Canyon)', 'M1 (X-Canyon)', 'M3'),
@@ -50,6 +57,7 @@ class GlobalAnalysisApp:
             theme={"colorScheme": "light"},
             children = [
                 dcc.Store(id='file-upload-status'),
+                dcc.Interval(id='interval-component', interval=2000, n_intervals=0),
                 dmc.Title("Global Building Responses", c="blue", size="h2"),
                 dmc.Tabs(
                     [
@@ -167,12 +175,6 @@ class GlobalAnalysisApp:
                         w = 300,
                         id='plot-title'),
 
-                # Put the following into an accordion
-                #createNumberInputComponent('Shear',    -25e2,   25e2, 500, 'kN'),
-                #createNumberInputComponent('Axial',        0,   25e3, 5e3, 'kN'),
-                #createNumberInputComponent('Moment',    -1e5,    2e5, 5e4, 'kNm'),
-                #createNumberInputComponent('Torsion',   -1e4,    1e4, 5e3, 'kNm'),
-                #createNumberInputComponent('Height', -60.365, 29.835,  10, 'm'),
                 
                 dmc.Accordion(
                     children=[
@@ -353,6 +355,11 @@ class GlobalAnalysisApp:
         self.registerUploadCallbacks('vizGenDisp-upload-analysis', 'Generalized Displacement', self.updateFileUploadText)
         self.registerUploadCallbacks('vizGenDisp-upload-height', 'Height Label', self.updateFileUploadText)
         
+        self.updateProgressBar('upload-sectioncut-data')
+        self.updateProgressBar('upload-height-data')
+        self.updateProgressBar('upload-gendisp-group')
+        self.updateProgressBar('vizGenDisp-upload-analysis')
+        self.updateProgressBar('vizGenDisp-upload-height')
         
         @self.app.callback(
             Output('download-GenDispDefn-excel', 'data'),
@@ -572,7 +579,6 @@ class GlobalAnalysisApp:
             Input('vizGenDisp-GMlist', "value")
         )
         def updateGMlistColorTable(GMlist):
-            print("In updateGMlistColorTable")
             if not GMlist:
                 return []
             rows = []
@@ -644,7 +650,6 @@ class GlobalAnalysisApp:
         )
         def updateCaseGridDisp_VizDisp(data, Dlim, Dmax, Hmin, Hmax, Dstep, DlimName, showLimit):
             if data and 'vizDataFileUploaded' in data.keys() and data['vizDataFileUploaded'] == 'Complete':
-                print(self.updateCaseGridDisp(Dlim, Dmax, Hmin, Hmax, Dstep, DlimName, showLimit))
                 return self.updateCaseGridDisp(Dlim, Dmax, Hmin, Hmax, Dstep, DlimName, showLimit)
             return no_update, no_update, no_update, no_update, no_update
         
@@ -763,50 +768,84 @@ class GlobalAnalysisApp:
     
     def registerUploadCallbacks(self, componentID, fileCategory, callbackMethod):
         @self.app.callback(
-            [Output('file-upload-status', 'data', allow_duplicate=True),
+            [Output(f'{componentID}-progress', 'value'),
+            Output('file-upload-status', 'data', allow_duplicate=True),
             Output(componentID, 'children')],
             [Input(componentID, 'contents'),
             State(componentID, 'filename'),
             State('file-upload-status', 'data')],
             prevent_initial_call=True,
-            suppress_callback_exceptions=True
+            suppress_callback_exceptions=True,
+            running=[(Output(f'{componentID}-progress', 'striped'), True, False), (Output(f'{componentID}-progress', 'animated'), True, False)]
         )
         def updateFileName(contents, filename, storedData):
             trigger = callback_context.triggered[0]['prop_id'].split('.')[0]
-            print('Trigger:', trigger)
-            return callbackMethod(contents=contents, filename=filename, 
+            
+            generator = callbackMethod(contents=contents, filename=filename, 
                                      fileCategory=fileCategory,storedData=storedData)
+            results = []
+            for progressVal, storage, textVal in generator:
+                self.fileUploadProgress[f'{componentID}-progress'] = progressVal
+                results.append((progressVal, storage, textVal))
+            
+            return results[-1] if results else (0, storedData, no_update)
     
+    # Create a callback to update the value of f'{componentID}-progress' continuously in the background
+    def updateProgressBar(self, componentID):
+        @self.app.callback(
+            Output(f'{componentID}-progress', 'value', allow_duplicate=True),
+            [Input('interval-component', 'n_intervals')],
+            prevent_initial_call=True,
+        )
+        def updateProgress(n_intervals):
+            if self.uploadCallbackRunning:
+                return self.fileUploadProgress.get(f'{componentID}-progress', 0)
+            else:
+                return no_update
+
     
     def updateFileUploadText(self, **kwargs):
         contents = kwargs.get('contents')
         filename = kwargs.get('filename')
         fileCategory = kwargs.get('fileCategory')
         storedData = kwargs.get('storedData')
+        
         if contents is not None:
             if storedData is None:
                 storedData = {}
             _, content_string = contents.split(',')
             decoded = base64.b64decode(content_string)
             file = io.BytesIO(decoded)
-            if fileCategory in ['Section Cut', 'Drift Group','Generalized Displacement']:
-                print('Reading File....fileCategory:', fileCategory)
-                self.conn = connectDB(file)
-                if fileCategory == 'Section Cut':
-                    storedData['SectionCutDataFileUploaded'] = 'Complete'
-                elif fileCategory == 'Drift Group':
-                    storedData['DriftGroupFileUploaded'] = 'Complete'
-                elif fileCategory == 'Generalized Displacement':
-                    storedData['vizDataFileUploaded'] = 'Complete'
-                    
-            else:
-                self.height_conn = connectDB(file)
-                query = 'SELECT FloorLabel as story, SAP2000Elev as height FROM "Floor Elevations"'        
-                self.height_data = getData(self.height_conn, query=query)
-                storedData['heightFileUploaded'] = 'Complete'
-            return storedData, html.Div(['File ', html.B(html.A(filename, style = {'color':'blue'})), ' Uploaded. Drag/Drop/Select another file if desired.'])
+            
+            #print('Reading File....fileCategory:', fileCategory)
+            progress_gen = connectDB(file)
+            connection = None
+            for progress in progress_gen:
+                if isinstance(progress, dict):
+                    self.uploadCallbackRunning = True
+                    progressVal = progress.get('progress')
+                    #print('Progress:', progressVal)
+                    yield progressVal, no_update, no_update
+                else:
+                    connection = progress
+            if connection:
+                self.uploadCallbackRunning = False
+                if fileCategory in ['Section Cut', 'Drift Group','Generalized Displacement']:
+                    self.conn = connection
+                    if fileCategory == 'Section Cut':
+                        storedData['SectionCutDataFileUploaded'] = 'Complete'
+                    elif fileCategory == 'Drift Group':
+                        storedData['DriftGroupFileUploaded'] = 'Complete'
+                    elif fileCategory == 'Generalized Displacement':
+                        storedData['vizDataFileUploaded'] = 'Complete'                    
+                else:                
+                    self.height_conn = connection
+                    query = 'SELECT FloorLabel as story, SAP2000Elev as height FROM "Floor Elevations"'        
+                    self.height_data = getData(self.height_conn, query=query)
+                    storedData['heightFileUploaded'] = 'Complete'
+            yield 100, storedData, html.Div(['File ', html.B(html.A(filename, style = {'color':'blue'})), ' Uploaded. Drag/Drop/Select another file if desired.'])
         else:
-            return no_update, html.Div([
+            yield 0, no_update, html.Div([
                 f'Drag and Drop the {fileCategory} File or ',
                 html.A('Select a File')
             ])

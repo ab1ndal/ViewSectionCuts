@@ -26,7 +26,16 @@ def createUploadComponent(idName, label, **kwargs):
                             'textAlign': 'center',
                             'margin': '10px'
                         },
-                        multiple=False  # Allow only one file to be uploaded at a time
+                        multiple=False 
+                    ),
+                    dmc.Progress(
+                        id=f'{idName}-progress',
+                        value=0,
+                        striped=False,
+                        animated=False,
+                        size='md',
+                        color='blue',
+                        mt = 10
                     )
                 ], span=12),
             ])

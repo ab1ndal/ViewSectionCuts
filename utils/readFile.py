@@ -26,15 +26,20 @@ def connectDB(filePath, connection=None):
     if connection is None:
         connection = sqlite3.connect(':memory:', check_same_thread=False)
     xls = pd.ExcelFile(filePath)
-    for sheet in xls.sheet_names:
+    totalSheets = len(xls.sheet_names)
+    for i, sheet in enumerate(xls.sheet_names,1):
         print(f'Processing {sheet}')
         df = pd.read_excel(filePath, sheet_name=sheet, header=1).iloc[1:]
         connection.execute('PRAGMA journal_mode=WAL;')
         df.to_sql(sheet, connection, index=False, if_exists='replace')
+        progressVal = int((i/totalSheets)*100)
+        if progressVal != 100:
+            print(progressVal)
+            yield {'progress': progressVal, 'message': f'Processing {i} of {totalSheets} Sheets: {sheet}...'}
     connection.commit()
     end = time.time()
     print(f'Execution time: {end - start}')
-    return connection
+    yield connection
 
 
 ## Usage
