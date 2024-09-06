@@ -29,12 +29,14 @@ def connectDB(filePath, connection=None):
     totalSheets = len(xls.sheet_names)
     for i, sheet in enumerate(xls.sheet_names,1):
         print(f'Processing {sheet}')
+        progressVal = int((i-0.5/totalSheets)*100)
+        if progressVal < 100:
+            yield {'progress': progressVal, 'message': f'Processing {i} of {totalSheets} Sheets: {sheet}...'}
         df = pd.read_excel(filePath, sheet_name=sheet, header=1).iloc[1:]
         connection.execute('PRAGMA journal_mode=WAL;')
         df.to_sql(sheet, connection, index=False, if_exists='replace')
         progressVal = int((i/totalSheets)*100)
         if progressVal != 100:
-            print(progressVal)
             yield {'progress': progressVal, 'message': f'Processing {i} of {totalSheets} Sheets: {sheet}...'}
     connection.commit()
     end = time.time()

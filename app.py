@@ -19,6 +19,8 @@ from utils.extraTools import wrap_text, rgb2hex
 _dash_renderer._set_react_version("18.2.0")
 Dash(external_stylesheets=dmc.styles.ALL)
 
+#pio.orca.config.executable = r"C:\\Python312\\Lib\\site-packages\\kaleido\\executable\\kaleido.cmd"
+
 class GlobalAnalysisApp:
     def __init__(self):
         self.app = Dash(__name__)
@@ -199,6 +201,9 @@ class GlobalAnalysisApp:
                 dmc.Button("Reset Axis", id='reset-button', color="teal"),
                 
                 dmc.Button("Clear Data", id='clear-button', color="red"),
+
+                dmc.Button("PDF Export", id="pdf-export-sectionCut", color="green", disabled=True),
+
                 ]),
                 dmc.Grid([
                     dmc.GridCol([
@@ -217,7 +222,8 @@ class GlobalAnalysisApp:
                                                     'doubleClick': 'reset',
                                                     'modeBarButtonsToAdd': ['drawline', 'drawcircle', 'drawrect', 'eraseshape', 'togglespikelines']
                                                 }), span=12)
-                    ], gutter=0),   
+                    ], gutter=0),  
+                dcc.Download(id="download-sectionCut-pdf"), 
             ])
 
     # Function to utilize Gene
@@ -428,7 +434,24 @@ class GlobalAnalysisApp:
                     f"Displacement Plot Step Size ({units.printUnit('length')})",
                     f"Maximum Displacement Plot Limit ({units.printUnit('length')})")
 
-        
+        @self.app.callback(
+            Output('download-sectionCut-pdf', 'data'),
+            Input('pdf-export-sectionCut', 'n_clicks'),
+            State('subplot-graph', 'figure')
+        )
+        def exportSectionCutPDF(n_clicks, fig):
+            if n_clicks:
+                print('Exporting PDF')
+                figObj = go.Figure(fig)
+                buffer = io.BytesIO()
+                pio.write_image(figObj, file=buffer, format='pdf', engine='orca')
+                buffer.seek(0)
+                #pdf_byte = figObj.to_image(format='pdf', engine = 'kaleido')
+                #print(pdf_byte)
+                return dcc.send_bytes(buffer.getvalue(), 'SectionCutForces.pdf')
+            return None
+
+
         #Clear the data
         @self.app.callback(
             [Output('upload-gendisp-group', 'children',allow_duplicate=True),
@@ -1000,9 +1023,11 @@ class GlobalAnalysisApp:
                 # For each cutName in the list find average for all load case name
                 dataCut = data[data['SectionCut'].str.startswith(cutName+' - ')].reset_index(drop=True)
                 aggCaseList = []
+                aggcolor = []
                 for i, case in enumerate(load_case_name):
                     if loadType[i] == 'TH':
                         aggCaseList.append(case)
+                        aggcolor.append(colList[i])
                 dataCutCase = dataCut[dataCut['OutputCase'].isin(aggCaseList)].reset_index(drop=True)
                 dataCutCase = dataCutCase.drop(columns=['OutputCase', 'SectionCut'])
                 if agg_type == 'Average':
@@ -1026,14 +1051,14 @@ class GlobalAnalysisApp:
                         self.plotCases(colList, typeList, cutI, cut_id[cutI], cI, case, filtered_data, 'Max', showLabel, SF = 1.0, loadLabel = loadLabel[cI], lineWidth=lineWidth, inUnit = inUnit, outUnit = outUnit)
                         self.plotCases(colList, typeList, cutI, cut_id[cutI], cI, case, filtered_data, 'Min', False, SF = 1.0, loadLabel = loadLabel[cI], lineWidth=lineWidth, inUnit = inUnit, outUnit = outUnit)
                 if agg_type == 'Average':
-                    self.plotCases(['green'], typeList, cutI, cut_id[cutI], cI, case, avgData, 'Max', True, SF = 1.0, loadLabel = 'Average MCE', inUnit = inUnit, outUnit = outUnit)
-                    self.plotCases(['green'], typeList, cutI, cut_id[cutI], cI, case, avgData, 'Min', False, SF = 1.0, loadLabel = 'Average MCE', inUnit = inUnit, outUnit = outUnit)
+                    self.plotCases([aggcolor[0]], typeList, cutI, cut_id[cutI], cI, case, avgData, 'Max', True, SF = 1.0, loadLabel = 'Average MCE', inUnit = inUnit, outUnit = outUnit)
+                    self.plotCases([aggcolor[0]], typeList, cutI, cut_id[cutI], cI, case, avgData, 'Min', False, SF = 1.0, loadLabel = 'Average MCE', inUnit = inUnit, outUnit = outUnit)
                 if agg_type == 'Min':
-                    self.plotCases(['green'], typeList, cutI, cut_id[cutI], cI, case, minData, 'Max', True, SF = 1.0, loadLabel = 'Min MCE', inUnit = inUnit, outUnit = outUnit)
-                    self.plotCases(['green'], typeList, cutI, cut_id[cutI], cI, case, maxData, 'Min', False, SF = 1.0, loadLabel = 'Min MCE', inUnit = inUnit, outUnit = outUnit)
+                    self.plotCases([aggcolor[0]], typeList, cutI, cut_id[cutI], cI, case, minData, 'Max', True, SF = 1.0, loadLabel = 'Min MCE', inUnit = inUnit, outUnit = outUnit)
+                    self.plotCases([aggcolor[0]], typeList, cutI, cut_id[cutI], cI, case, maxData, 'Min', False, SF = 1.0, loadLabel = 'Min MCE', inUnit = inUnit, outUnit = outUnit)
                 if agg_type == 'Max':
-                    self.plotCases(['green'], typeList, cutI, cut_id[cutI], cI, case, maxData, 'Max', True, SF = 1.0, loadLabel = 'Max MCE', inUnit = inUnit, outUnit = outUnit)
-                    self.plotCases(['green'], typeList, cutI, cut_id[cutI], cI, case, minData, 'Min', False, SF = 1.0, loadLabel = 'Max MCE', inUnit = inUnit, outUnit = outUnit)
+                    self.plotCases([aggcolor[0]], typeList, cutI, cut_id[cutI], cI, case, maxData, 'Max', True, SF = 1.0, loadLabel = 'Max MCE', inUnit = inUnit, outUnit = outUnit)
+                    self.plotCases([aggcolor[0]], typeList, cutI, cut_id[cutI], cI, case, minData, 'Min', False, SF = 1.0, loadLabel = 'Max MCE', inUnit = inUnit, outUnit = outUnit)
             
             for i in range(1,3):
                 for j in range(1,4):
