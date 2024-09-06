@@ -710,12 +710,13 @@ class GlobalAnalysisApp:
                     units = UnitConvertor(inUnit, outUnit)
                     lenConv = units.convert_length(1)
                     lenUnit = units.printUnit('length')
+                    heightMult = UnitConvertor(inUnit, 'kN,m,C').convert_length(1)
                     self.genDisp = GeneralizedDisplacement(analysisFileConnection = self.conn,
                                                    heightFileConnection = self.height_conn,
                                                    Dlim = Dlim, Dmax=Dmax, DlimName = DlimName, Dstep = Dstep,
                                                    Hmin=Hmin, Hmax=Hmax, showLimit = showLimit, plotList = plotList, 
                                                    caseType = caseType, DispMin = DispMin, DispMax = DispMax, 
-                                                   DispStep = DispStep, lenConv = lenConv, lenUnit = lenUnit)
+                                                   DispStep = DispStep, lenConv = lenConv, lenUnit = lenUnit, heightMult = heightMult)
                     self.genDisp.readMainFile()
                     self.genDisp.readDefinitionFile()
                     self.genDisp.readHeightFile()

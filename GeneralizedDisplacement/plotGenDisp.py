@@ -61,6 +61,11 @@ class GeneralizedDisplacement:
             self.lenConv = kwargs['lenConv']
             self.lenUnit = kwargs['lenUnit']
 
+        if 'heightMult' in kwargs:
+            self.heightMult = kwargs['heightMult']
+        else:
+            self.heightMult = 1
+
         self.compiledDrift = None
         self.LABEL_LEGEND_FONT_SIZE = 8
         self.assignDriftLimit(Dlim = kwargs['Dlim'], Dmax = kwargs['Dmax'], Dstep = kwargs['Dstep'])
@@ -220,7 +225,7 @@ class GeneralizedDisplacement:
                         for gm_i, gm in enumerate(GMList):
                             condition2 = self.compiledDrift['OutputCase'] == gm
                             selGrid = self.compiledDrift[condition1 & condition2 & condition3].reset_index(drop=True).sort_values(by='TopZ', ascending=False)
-                            ax[d_i].step(selGrid['Drift'], selGrid['TopZ'], label=nameList[gm_i], color = colList[gm_i%len(colList)])
+                            ax[d_i].step(selGrid['Drift'], self.heightMult*selGrid['TopZ'], label=nameList[gm_i], color = colList[gm_i%len(colList)])
                         self.formataxis(ax[d_i], 'Drift')
                     plt.tight_layout()
                     #New Save File
@@ -243,7 +248,7 @@ class GeneralizedDisplacement:
                         for g_i, g in enumerate(gridList):
                             condition1 = self.compiledDrift['GenDispl'].str.contains(g+"_")
                             selGrid = self.compiledDrift[condition1 & condition2 & condition3].reset_index(drop=True).sort_values(by='TopZ', ascending=False)
-                            ax[d_i].step(selGrid['Drift'], selGrid['TopZ'], label=g, color = colListGM[g_i%len(colListGM)])
+                            ax[d_i].step(selGrid['Drift'], self.heightMult*selGrid['TopZ'], label=g, color = colListGM[g_i%len(colListGM)])
                         self.formataxis(ax[d_i], 'Drift')
                     plt.tight_layout()
                     #New Save File
@@ -263,20 +268,20 @@ class GeneralizedDisplacement:
                         for d_i, d in enumerate(dispList):
                             ax[d_i].set_title(f'{g} - {d} ({title[d_i]})')
                             if self.caseType[gm_i] == 'Lin':
-                                ax[d_i].plot(self.lenConv*selGrid[f'U{d_i+1}'], selGrid['Z'], label=nameList[gm_i], color = colList[gm_i%len(colList)])
+                                ax[d_i].plot(self.lenConv*selGrid[f'U{d_i+1}'], self.heightMult*selGrid['Z'], label=nameList[gm_i], color = colList[gm_i%len(colList)])
                             elif self.caseType[gm_i] == 'NonLin':
                                 maxSelGrid = selGrid[selGrid['StepType'] == 'Max']
-                                ax[d_i].plot(self.lenConv*maxSelGrid[f'U{d_i+1}'], maxSelGrid['Z'], label=nameList[gm_i], color = colList[gm_i%len(colList)])
+                                ax[d_i].plot(self.lenConv*maxSelGrid[f'U{d_i+1}'], self.heightMult*maxSelGrid['Z'], label=nameList[gm_i], color = colList[gm_i%len(colList)])
                             elif self.caseType[gm_i] == 'RS':
                                 maxSelGrid = selGrid[selGrid['StepType'] == 'Max']
-                                ax[d_i].plot(self.lenConv*maxSelGrid[f'U{d_i+1}'], maxSelGrid['Z'], label=nameList[gm_i], color = colList[gm_i%len(colList)])
-                                ax[d_i].plot(-self.lenConv*maxSelGrid[f'U{d_i+1}'], maxSelGrid['Z'], color = colList[gm_i%len(colList)])
+                                ax[d_i].plot(self.lenConv*maxSelGrid[f'U{d_i+1}'], self.heightMult*maxSelGrid['Z'], label=nameList[gm_i], color = colList[gm_i%len(colList)])
+                                ax[d_i].plot(-self.lenConv*maxSelGrid[f'U{d_i+1}'], self.heightMult*maxSelGrid['Z'], color = colList[gm_i%len(colList)])
                             
                             else:
                                 maxSelGrid = selGrid[selGrid['StepType'] == 'Max']
                                 minSelGrid = selGrid[selGrid['StepType'] == 'Min']
-                                ax[d_i].plot(self.lenConv*maxSelGrid[f'U{d_i+1}'], maxSelGrid['Z'], label=nameList[gm_i], color = colList[gm_i%len(colList)])
-                                ax[d_i].plot(self.lenConv*minSelGrid[f'U{d_i+1}'], minSelGrid['Z'], color = colList[gm_i%len(colList)])
+                                ax[d_i].plot(self.lenConv*maxSelGrid[f'U{d_i+1}'], self.heightMult*maxSelGrid['Z'], label=nameList[gm_i], color = colList[gm_i%len(colList)])
+                                ax[d_i].plot(self.lenConv*minSelGrid[f'U{d_i+1}'], self.heightMult*minSelGrid['Z'], color = colList[gm_i%len(colList)])
                             
                     for i in range(len(dispList)):
                         ax[i].vlines(0, self.Hmin, self.Hmax, linestyle='--', color = 'black', linewidth=1)
@@ -299,19 +304,19 @@ class GeneralizedDisplacement:
                         for d_i, d in enumerate(dispList):
                             ax[d_i].set_title(f'{nameList[gm_i]} - {d} ({title[d_i]})')
                             if self.caseType[gm_i] == 'Lin':
-                                ax[d_i].plot(self.lenConv*selGrid[f'U{d_i+1}'], selGrid['Z'], label=g, color = colListGM[g_i%len(colListGM)])
+                                ax[d_i].plot(self.lenConv*selGrid[f'U{d_i+1}'], self.heightMult*selGrid['Z'], label=g, color = colListGM[g_i%len(colListGM)])
                             elif self.caseType[gm_i] == 'NonLin':
                                 maxSelGrid = selGrid[selGrid['StepType'] == 'Max']
-                                ax[d_i].plot(self.lenConv*maxSelGrid[f'U{d_i+1}'], maxSelGrid['Z'], label=g, color = colListGM[g_i%len(colListGM)])
+                                ax[d_i].plot(self.lenConv*maxSelGrid[f'U{d_i+1}'], self.heightMult*maxSelGrid['Z'], label=g, color = colListGM[g_i%len(colListGM)])
                             elif self.caseType[gm_i] == 'RS':
                                 maxSelGrid = selGrid[selGrid['StepType'] == 'Max']
-                                ax[d_i].plot(self.lenConv*maxSelGrid[f'U{d_i+1}'], maxSelGrid['Z'], label=g, color = colListGM[g_i%len(colListGM)])
-                                ax[d_i].plot(-self.lenConv*maxSelGrid[f'U{d_i+1}'], maxSelGrid['Z'], color = colListGM[g_i%len(colListGM)])
+                                ax[d_i].plot(self.lenConv*maxSelGrid[f'U{d_i+1}'], self.heightMult*maxSelGrid['Z'], label=g, color = colListGM[g_i%len(colListGM)])
+                                ax[d_i].plot(-self.lenConv*maxSelGrid[f'U{d_i+1}'], self.heightMult*maxSelGrid['Z'], color = colListGM[g_i%len(colListGM)])
                             else:
                                 maxSelGrid = selGrid[selGrid['StepType'] == 'Max']
                                 minSelGrid = selGrid[selGrid['StepType'] == 'Min']
-                                ax[d_i].plot(self.lenConv*maxSelGrid[f'U{d_i+1}'], maxSelGrid['Z'], label=g, color = colListGM[g_i%len(colListGM)])
-                                ax[d_i].plot(self.lenConv*minSelGrid[f'U{d_i+1}'], minSelGrid['Z'], color = colListGM[g_i%len(colListGM)])
+                                ax[d_i].plot(self.lenConv*maxSelGrid[f'U{d_i+1}'], self.heightMult*maxSelGrid['Z'], label=g, color = colListGM[g_i%len(colListGM)])
+                                ax[d_i].plot(self.lenConv*minSelGrid[f'U{d_i+1}'], self.heightMult*minSelGrid['Z'], color = colListGM[g_i%len(colListGM)])
                             
                     for i in range(len(dispList)):
                         ax[i].vlines(0, self.Hmin, self.Hmax, linestyle='--', color = 'black', linewidth=1)
