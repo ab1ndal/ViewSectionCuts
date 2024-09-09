@@ -842,7 +842,10 @@ class GlobalAnalysisApp:
             file = io.BytesIO(decoded)
             
             #print('Reading File....fileCategory:', fileCategory)
-            progress_gen = connectDB(file)
+            if fileCategory in ['Section Cut', 'Drift Group','Generalized Displacement']:
+                progress_gen = connectDB(file, dbName='MainFile')
+            else:
+                progress_gen = connectDB(file, dbName='HeightFile')
             connection = None
             for progress in progress_gen:
                 if isinstance(progress, dict):
@@ -864,7 +867,7 @@ class GlobalAnalysisApp:
                         storedData['vizDataFileUploaded'] = 'Complete'                    
                 else:                
                     self.height_conn = connection
-                    query = 'SELECT FloorLabel as story, SAP2000Elev as height FROM "Floor Elevations"'        
+                    query = 'SELECT "FloorLabel" as story, CAST("SAP2000Elev" AS NUMERIC) as height FROM "Floor Elevations"'        
                     self.height_data = getData(self.height_conn, query=query)
                     storedData['heightFileUploaded'] = 'Complete'
             yield 100, storedData, html.Div(['File ', html.B(html.A(filename, style = {'color':'blue'})), ' Uploaded. Drag/Drop/Select another file if desired.'])
@@ -901,14 +904,16 @@ class GlobalAnalysisApp:
         if not contents:
             return [],[]
         if self.conn is not None:
-            query = 'SELECT DISTINCT OutputCase FROM "Section Cut Forces - Analysis"'
+            query = 'SELECT DISTINCT "OutputCase" FROM "Section Cut Forces - Analysis"'
             data = getData(self.conn, query=query)
             data = data['OutputCase'].tolist()
+            #data = [row[0] for row in data]
             data.sort()
 
-            query = 'SELECT DISTINCT SectionCut FROM "Section Cut Forces - Analysis"'
+            query = 'SELECT DISTINCT "SectionCut" FROM "Section Cut Forces - Analysis"'
             cutNames = getData(self.conn, query=query)
             cutGroups = getCutGroup(cutNames['SectionCut'].tolist())
+            #cutGroups = getCutGroup([row[0] for row in cutNames])
             cutGroups.sort()
             return data, cutGroups
         return [], []
@@ -1003,14 +1008,6 @@ class GlobalAnalysisApp:
         if plotClicks:
             self.fig.data = []
             data = getCutForces(self.conn, cut_name_list, load_case_name)
-            
-            #defaultColor = [rgb2hex(color) for color in distinctipy.get_colors(len(load_case_name),[(1,1,1)])]
-            #colList = load_case_color.split(',') if load_case_color else defaultColor
-
-            
-            #typeList = line_type_list.split(',') if line_type_list else ['solid', 'dash', 'dot', 'dashdot', 'longdash', 'longdashdot']
-            #loadLabel = load_case_label.split(',') if load_case_label else load_case_name
-            #loadType = load_case_type.split(',') if load_case_type else ['NonLin']*len(load_case_name)
             self.allLegendList = []
 
             for Li, lType in enumerate(loadType):
@@ -1111,12 +1108,12 @@ class GlobalAnalysisApp:
         else:
             self.allLegendList.append(legendEntry)
         units = UnitConvertor(inUnit, outUnit)
-        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=units.convert(1,'force')*SF*filtered_data['F1'], mode='lines', name=legendEntry, line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)], width=lineWidth),showlegend=showLegend, legendgroup=loadLabel+cutName), row=1, col=1, secondary_y=False)
-        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=units.convert(1,'force')*SF*filtered_data['F2'], mode='lines', name=legendEntry, line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)], width=lineWidth),showlegend=False, legendgroup=loadLabel+cutName), row=1, col=2, secondary_y=False)
-        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=units.convert(1,'force')*SF*filtered_data['F3'], mode='lines', name=legendEntry, line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)], width=lineWidth),showlegend=False, legendgroup=loadLabel+cutName), row=1, col=3, secondary_y=False)
-        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=units.convert(1,'moment')*SF*filtered_data['M2'], mode='lines', name=legendEntry, line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)], width=lineWidth),showlegend=False, legendgroup=loadLabel+cutName), row=2, col=1, secondary_y=False)
-        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=units.convert(1,'moment')*SF*filtered_data['M1'], mode='lines', name=legendEntry, line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)], width=lineWidth),showlegend=False, legendgroup=loadLabel+cutName), row=2, col=2, secondary_y=False)
-        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=units.convert(1,'moment')*SF*filtered_data['M3'], mode='lines', name=legendEntry, line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)], width=lineWidth),showlegend=False, legendgroup=loadLabel+cutName), row=2, col=3, secondary_y=False)
+        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=units.convert(1,'force')*SF*filtered_data['F1'].apply(lambda x: float(x)), mode='lines', name=legendEntry, line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)], width=lineWidth),showlegend=showLegend, legendgroup=loadLabel+cutName), row=1, col=1, secondary_y=False)
+        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=units.convert(1,'force')*SF*filtered_data['F2'].apply(lambda x: float(x)), mode='lines', name=legendEntry, line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)], width=lineWidth),showlegend=False, legendgroup=loadLabel+cutName), row=1, col=2, secondary_y=False)
+        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=units.convert(1,'force')*SF*filtered_data['F3'].apply(lambda x: float(x)), mode='lines', name=legendEntry, line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)], width=lineWidth),showlegend=False, legendgroup=loadLabel+cutName), row=1, col=3, secondary_y=False)
+        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=units.convert(1,'moment')*SF*filtered_data['M2'].apply(lambda x: float(x)), mode='lines', name=legendEntry, line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)], width=lineWidth),showlegend=False, legendgroup=loadLabel+cutName), row=2, col=1, secondary_y=False)
+        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=units.convert(1,'moment')*SF*filtered_data['M1'].apply(lambda x: float(x)), mode='lines', name=legendEntry, line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)], width=lineWidth),showlegend=False, legendgroup=loadLabel+cutName), row=2, col=2, secondary_y=False)
+        self.fig.add_trace(go.Scatter(y=filtered_data['CutHeight'], x=units.convert(1,'moment')*SF*filtered_data['M3'].apply(lambda x: float(x)), mode='lines', name=legendEntry, line = dict(color =colList[cI%len(colList)], dash=typeList[cutI%len(typeList)], width=lineWidth),showlegend=False, legendgroup=loadLabel+cutName), row=2, col=3, secondary_y=False)
 
         
 

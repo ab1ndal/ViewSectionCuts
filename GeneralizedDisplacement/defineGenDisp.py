@@ -12,10 +12,10 @@ def groupListFromGrid(gridList, topSuffix, botSuffix):
     groupList = [f"'{topSuffix}{x}', '{botSuffix}{x}'" for x in grid]
     groupListSQL = ",".join(groupList)
     query = f"""
-        SELECT GroupName, ObjectLabel
+        SELECT "GroupName", "ObjectLabel"
         FROM "Groups 2 - Assignments" 
-        WHERE ObjectType = "Joint"
-        AND GroupName IN ({groupListSQL})
+        WHERE "ObjectType" = "Joint"
+        AND "GroupName" IN ({groupListSQL})
     """
     return query,grid
 
@@ -23,7 +23,7 @@ def defineGenDisp(connection, gridList, topSuffix, botSuffix):
     query, grid = groupListFromGrid(gridList, topSuffix, botSuffix)
     groupData = getData(connection, query=query)
 
-    coordList = getData(connection, query = 'Select Joint, CAST(Z AS FLOAT) AS Z from "Joint Coordinates"')
+    coordList = getData(connection, query = 'Select "Joint", CAST("Z" AS FLOAT) AS "Z" from "Joint Coordinates"')
 
     query = """
     Select GroupName, ObjectLabel, Z 
