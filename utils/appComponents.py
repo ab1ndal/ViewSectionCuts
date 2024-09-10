@@ -56,7 +56,6 @@ def createMultiSelectComponent(idName, label, **kwargs):
                     w = 300,
                     description=f'Select {label} from the list',
                     required=True,
-                    error = True,
                     id=idName,
                     data=data,
                     value=value,
@@ -85,7 +84,6 @@ def createSelectComponent(idName, label, **kwargs):
                     w = 300,
                     description=description,
                     required=True,
-                    error = True,
                     id=idName,
                     data=values,
                     value=defaultValue,
@@ -108,16 +106,19 @@ def createTextInputComponent(idName, label, **kwargs):
         description = kwargs['description']
     else:
         description = None
+
+    
         
     return dmc.GridCol([
                 dmc.TextInput(label=label,
                         w = 300,
-                        error = True,
                         id=idName,
                         description=description,
                         required=True,
                         placeholder=placeholder,
-                        value=value),
+                        value=value,
+                        style = {'color': 'black'},
+                        className = 'custom-placeholder'),
             ], span=4)
 
 def createRadioComponent(idName, **kwargs):

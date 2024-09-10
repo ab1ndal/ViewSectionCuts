@@ -82,15 +82,15 @@ class GeneralizedDisplacement:
         #self.connection = connectDB(self.analysisFile)
         if 'Drift' in self.plotList:
             query = f"""
-            SELECT GenDispl, OutputCase, max(abs(Translation)) as Disp
+            SELECT "GenDispl", "OutputCase", max(abs(CAST("Translation" AS Float))) as "Disp"
             FROM "Jt Displacements - Generalized"
-            GROUP BY GenDispl, OutputCase
+            GROUP BY "GenDispl", "OutputCase"
             """
             #connection = connectDB(inputFile)
             self.genDispData = getData(self.connection, query=query)
         if 'Disp' in self.plotList:
             query = f"""
-            SELECT Joint, OutputCase, StepType, U1, U2, U3
+            SELECT "Joint", "OutputCase", "StepType", CAST("U1" AS Float), CAST("U2" AS Float), CAST("U3" AS Float)
             FROM "Joint Displacements"
             """
             #connection = connectDB(inputFile)
@@ -98,19 +98,22 @@ class GeneralizedDisplacement:
 
 
     def readDefinitionFile(self):
-        self.jointData = getData(self.connection, query='SELECT Joint, Z FROM "Joint Coordinates"')
+        self.jointData = getData(self.connection, query='SELECT "Joint", CAST("Z" AS FLOAT) FROM "Joint Coordinates"')
         if 'Drift' in self.plotList:
-            self.genDispDefn = getData(self.connection, query='SELECT GenDispl, Joint, U1SF, U2SF FROM "Gen Displ Defs 1 - Translation"')
+            self.genDispDefn = getData(self.connection, query='SELECT "GenDispl", "Joint", CAST("U1SF" AS FLOAT), CAST("U2SF" AS FLOAT) FROM "Gen Displ Defs 1 - Translation"')
             self.genDispDefn['Loc'] = self.genDispDefn['U1SF'] + self.genDispDefn['U2SF']
             self.genDispDefn.drop(columns=['U1SF', 'U2SF'], inplace=True)
         if 'Disp' in self.plotList:
             self.jointGroup = getData(self.connection, 
-                                      query='SELECT GroupName, ObjectLabel FROM "Groups 2 - Assignments" WHERE ObjectType = "Joint" AND GroupName LIKE "Drift_Top_%"')
+                                      query="""
+                                      SELECT "GroupName", "ObjectLabel" FROM "Groups 2 - Assignments" WHERE "ObjectType" = 'Joint' AND "GroupName" LIKE 'Drift_Top_%'
+                                      """)
             
 
     def readHeightFile(self):
         #self.heightConnection = connectDB(self.heightFile)
-        self.heightData = getData(self.heightConnection, tableName='Floor Elevations')
+        self.heightData = getData(self.heightConnection,
+                                  query='SELECT CAST("SAP2000Elev" AS FLOAT), "FloorLabel" FROM "Floor Elevations"')
 
     def getGMList(self):
         return sorted(self.genDispData['OutputCase'].unique().tolist())
@@ -139,18 +142,18 @@ class GeneralizedDisplacement:
         if 'Drift' in self.plotList:        
             genDispDefn = self.genDispDefn
             query = f"""
-            SELECT GenDispl, genDispDefn.Joint, cast(Z as float) as Z
+            SELECT "GenDispl", genDispDefn."Joint", cast("Z" as float) as "Z"
             FROM genDispDefn
             INNER JOIN jointData
-            ON genDispDefn.Joint = jointData.Joint
+            ON genDispDefn."Joint" = jointData."Joint"
             WHERE Loc = 1
             """
             topJoint = ps.sqldf(query, locals())
             query = f"""
-            SELECT GenDispl, genDispDefn.Joint, cast(Z as float) as Z
+            SELECT "GenDispl", genDispDefn."Joint", cast("Z" as float) as "Z"
             FROM genDispDefn
             INNER JOIN jointData
-            ON genDispDefn.Joint = jointData.Joint
+            ON genDispDefn."Joint" = jointData."Joint"
             WHERE Loc = -1
             """
             botJoint = ps.sqldf(query, locals())
@@ -163,12 +166,12 @@ class GeneralizedDisplacement:
                         condition3 = self.genDispData['GenDispl'].str.contains(d)
                         selGrid = self.genDispData[condition1 & condition2 & condition3].reset_index(drop=True)
                         query = f"""
-                        SELECT selGrid.GenDispl, OutputCase, Disp, topJoint.Joint as TopJoint,topJoint.Z as TopZ, botJoint.Joint as BotJoint, botJoint.Z as BotZ
+                        SELECT selGrid."GenDispl", "OutputCase", "Disp", topJoint."Joint" as "TopJoint", topJoint."Z" as "TopZ", botJoint."Joint" as "BotJoint", botJoint."Z" as "BotZ"
                         FROM selGrid
                         JOIN topJoint
-                        ON selGrid.GenDispl = topJoint.GenDispl
+                        ON selGrid."GenDispl" = topJoint."GenDispl"
                         JOIN botJoint
-                        ON selGrid.GenDispl = botJoint.GenDispl
+                        ON selGrid."GenDispl" = botJoint."GenDispl"
                         """
                         finalData = ps.sqldf(query, locals())
                         finalData['Drift'] = abs(finalData['Disp']/(finalData['TopZ'] - finalData['BotZ']))
@@ -178,12 +181,12 @@ class GeneralizedDisplacement:
             for g_i, g in enumerate(gridList):
                 dispData = self.dispData
                 query = f"""
-                SELECT '{g}' as Grid, dispData.Joint, Z, OutputCase, StepType, U1, U2, U3
+                SELECT '{g}' as "Grid", dispData."Joint", "Z", "OutputCase", "StepType", "U1", "U2", "U3"
                 FROM dispData
                 JOIN jointData
-                ON dispData.Joint = jointData.Joint
+                ON dispData."Joint" = jointData."Joint"
                 JOIN jointGroup
-                ON dispData.Joint = ObjectLabel                
+                ON dispData."Joint" = "ObjectLabel"                
                 WHERE GroupName = 'Drift_Top_{g}'
                 """
                 finalData = ps.sqldf(query, locals())
@@ -364,37 +367,3 @@ class GeneralizedDisplacement:
         ax.legend(loc='lower right', fontsize=self.LABEL_LEGEND_FONT_SIZE)
         
         return ax
-
-"""
-if __name__ == '__main__':
-    #################################### USER INPUT ####################################
-    inputFileLoc = r"C:\\Users\\abindal\\OneDrive - Nabih Youssef & Associates\\Documents\\00_Projects\\06_The Vault\\20240715 Models\\20240814_302\\"
-    inputFile = inputFileLoc + "\\20240821_ResponseSpectrum.xlsx"
-    heightFile = inputFileLoc + '\\FloorElevations.xlsx'
-
-    #gridList = ['N12A', 'N12B', 'N12C', 'N12D', 'N12', 
-    #        'N13A', 'N13B', 'N13C', 'N13D', 'N13E',
-    #        'N13F', 'N13G', 'N13H']
-    GMList = ['SLE - 2% Damped - U1', 'SLE - 2% Damped - U2']
-
-    #gridList = ['S12A', 'S12B', 'S12C', 'S12D', 'S12', 
-    #        'S13A', 'S13B', 'S13C', 'S13D', 'S13E',
-    #        'S13F', 'S13G', 'S13H', 'S13J', 'S13K']
-    #GMList = ['Absolute Avg']
-    gridList = ['S2', 'S3A', 'S3B', 'S3C', 'S3D', 'S3', 'S4A', 'S4B', 'S4C', 'S4D', 'S4', 'S5A', 'S5B', 'S5C', 'S5D', 'S5.1', 'S5.2']
-
-    dispList = ['U1', 'U2']
-    LABEL_LEGEND_FONT_SIZE = 8
-    ####################################################################################
-    
-    if not os.path.exists(inputFileLoc + f'\\DRIFTS'):
-        os.makedirs(inputFileLoc + f'\\DRIFTS')
-
-    genDisp = GeneralizedDisplacement(analysisFile=inputFile, heightFile=heightFile, 
-                                      DlimName = 'SLE Limit', Dlim = 0.004, Dmax = 0.005, Dstep = 0.001,
-                                      Hmin=-22.965, Hmax=126.635)
-    genDisp.readMainFile()
-    genDisp.readDefinitionFile()
-    genDisp.readHeightFile()
-    genDisp.plotData(gridList, GMList, dispList)               
-"""

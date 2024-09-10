@@ -173,11 +173,14 @@ class GlobalAnalysisApp:
                     createRadioComponent(idName='sectionCut-agg-type', values = ['Ind', 'Average', 'Min', 'Max'], showLabel = 'Aggregation Type'),
                 ]),
 
-                dmc.TextInput(label='Enter the title for the plots',
-                        w = 300,
-                        id='plot-title'),
+                dmc.Grid([
+                    createTextInputComponent(idName='sectionCut-plot-title',
+                                             label='Enter the title for the plots'),
+                    createTextInputComponent(idName='sectionCut-plot-filename',
+                                             label='Enter the file name for the plots',
+                                             value='SectionCut Forces'),
+                ]),
 
-                
                 dmc.Accordion(
                     children=[
                         dmc.AccordionItem(
@@ -196,11 +199,11 @@ class GlobalAnalysisApp:
 
                 #horizontal_spacing=0.05
                 dmc.Group([
-                dmc.Button("Submit", id='submit-button', color="blue"),
+                dmc.Button("Submit", id='submit-button-sectionCut', color="blue"),
                 
-                dmc.Button("Reset Axis", id='reset-button', color="teal"),
+                dmc.Button("Reset Axis", id='reset-button-sectionCut', color="teal"),
                 
-                dmc.Button("Clear Data", id='clear-button', color="red"),
+                dmc.Button("Clear Data", id='clear-button-sectionCut', color="red"),
 
                 dmc.Button("PDF Export", id="pdf-export-sectionCut", color="green", disabled=True),
 
@@ -211,7 +214,7 @@ class GlobalAnalysisApp:
                     ], span=12),
                 ]),
                 dmc.Grid([
-                        dmc.GridCol(dcc.Graph(id='subplot-graph', figure = {}, 
+                        dmc.GridCol(dcc.Graph(id='sectionCut_figure', figure = {}, 
                                         config={'displayModeBar':True, 
                                                 'displaylogo':False, 
                                                 'toImageButtonOptions': {
@@ -437,7 +440,7 @@ class GlobalAnalysisApp:
         @self.app.callback(
             Output('download-sectionCut-pdf', 'data'),
             Input('pdf-export-sectionCut', 'n_clicks'),
-            State('subplot-graph', 'figure')
+            State('sectionCut_figure', 'figure')
         )
         def exportSectionCutPDF(n_clicks, fig):
             if n_clicks:
@@ -740,16 +743,16 @@ class GlobalAnalysisApp:
         # Clear the data
         self.app.callback(
             [Output('data-table', 'data', allow_duplicate=True),
-             Output('subplot-graph', 'figure', allow_duplicate=True)],
-            Input('clear-button', 'n_clicks'),
+             Output('sectionCut_figure', 'figure', allow_duplicate=True)],
+            Input('clear-button-sectionCut', 'n_clicks'),
             prevent_initial_call=True,
             suppress_callback_exceptions=True
         )(self.clearData)
 
         # Reset the axis
         self.app.callback(
-            Output('subplot-graph', 'figure', allow_duplicate=True),
-            [Input('reset-button', 'n_clicks')],
+            Output('sectionCut_figure', 'figure', allow_duplicate=True),
+            [Input('reset-button-sectionCut', 'n_clicks')],
             [[State('shear-min', 'value'),State('shear-max', 'value'),State('shear-step', 'value')],
             [State('axial-min', 'value'),State('axial-max', 'value'),State('axial-step', 'value')],
             [State('moment-min', 'value'),State('moment-max', 'value'),State('moment-step', 'value')],
@@ -762,11 +765,12 @@ class GlobalAnalysisApp:
         # Plot the data
         self.app.callback(
             [Output('data-table', 'data', allow_duplicate=True),
-            Output('subplot-graph', 'figure', allow_duplicate=True)],
-            [Input('submit-button', 'n_clicks')],
+            Output('sectionCut_figure', 'figure', allow_duplicate=True),
+            Output('sectionCut_figure', 'config', allow_duplicate=True),],
+            [Input('submit-button-sectionCut', 'n_clicks')],
             [State('cut-name-list', 'value'),State({'type': 'sectionCut-lineType', 'index': ALL}, 'value'),
             State('load-case-name', 'value'),State({'type': 'sectionCut-case-color', 'index': ALL}, 'value'),State({'type': 'sectionCut-case-id', 'index': ALL}, 'value'),State({'type': 'sectionCut-case-type', 'index': ALL}, 'value'),
-            State('plot-title', 'value'),
+            State('sectionCut-plot-title', 'value'), State('sectionCut-plot-filename', 'value'),
             [State('shear-min', 'value'),State('shear-max', 'value'),State('shear-step', 'value')],
             [State('axial-min', 'value'),State('axial-max', 'value'),State('axial-step', 'value')],
             [State('moment-min', 'value'),State('moment-max', 'value'),State('moment-step', 'value')],
@@ -843,7 +847,7 @@ class GlobalAnalysisApp:
             
             #print('Reading File....fileCategory:', fileCategory)
             if fileCategory in ['Section Cut', 'Drift Group','Generalized Displacement']:
-                progress_gen = connectDB(file, dbName='MainFile')
+                progress_gen = connectDB(file, dbName=fileCategory.replace(' ', '')+'File')
             else:
                 progress_gen = connectDB(file, dbName='HeightFile')
             connection = None
@@ -1004,7 +1008,7 @@ class GlobalAnalysisApp:
             self.fig.data = []
             return [], self.fig
     
-    def plotData(self, plotClicks, cut_name_list, typeList, load_case_name, colList, loadLabel, loadType, plot_title, shear_lims, axial_lims, moment_lims, torsion_lims, height_lims, agg_type, inUnit, outUnit, cut_id):
+    def plotData(self, plotClicks, cut_name_list, typeList, load_case_name, colList, loadLabel, loadType, plot_title,file_name, shear_lims, axial_lims, moment_lims, torsion_lims, height_lims, agg_type, inUnit, outUnit, cut_id):
         if plotClicks:
             self.fig.data = []
             data = getCutForces(self.conn, cut_name_list, load_case_name)
@@ -1091,7 +1095,21 @@ class GlobalAnalysisApp:
                         )
             
             self.updateAxis(shear_lims, axial_lims, moment_lims, torsion_lims, height_lims, inUnit, outUnit)
-            return data.to_dict('records'), self.fig
+
+            config = {
+            'displayModeBar': True,
+            'displaylogo': False,
+            'toImageButtonOptions': {
+                'format': 'png',
+                'filename': file_name,
+                'scale': 6
+            },
+            'doubleClick': 'reset',
+            'modeBarButtonsToAdd': ['drawline', 'drawcircle', 'drawrect', 'eraseshape', 'togglespikelines']
+            }
+
+
+            return data.to_dict('records'), self.fig, config
     
     def runApp(self):
         self.app.run_server(debug=True, port = self.port)     

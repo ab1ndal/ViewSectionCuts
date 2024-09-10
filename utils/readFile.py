@@ -8,6 +8,7 @@ from sqlalchemy.pool import NullPool
 from sqlalchemy.exc import SQLAlchemyError
 import psycopg2
 from psycopg2 import sql
+from decimal import Decimal
 
 env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
 load_dotenv(env_path)
@@ -19,6 +20,11 @@ db_params = {
     'host': os.getenv('DB_HOST'),
     'port': os.getenv('DB_PORT')
 }
+
+def convert_decimals_to_floats(df):
+    for col in df.select_dtypes(include=[object]):  # Iterate over object columns
+        df[col] = df[col].apply(lambda x: float(x) if isinstance(x, Decimal) else x)
+    return df
 
 def createConnection():
     try:
@@ -77,6 +83,7 @@ def create_table_if_not_exists(connection, df, table_name):
 
 def insert_data_bulk(connection, df, table_name):
     create_table_if_not_exists(connection, df, table_name)
+    df = convert_decimals_to_floats(df)
     connection.autoCommit = False
     try:        
         df.to_sql(
