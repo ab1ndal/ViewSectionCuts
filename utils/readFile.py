@@ -9,9 +9,26 @@ from sqlalchemy.exc import SQLAlchemyError
 import psycopg2
 from psycopg2 import sql
 from decimal import Decimal
+import logging
+import tempfile
 
 env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
 load_dotenv(env_path)
+
+log_dir = tempfile.gettempdir()
+log_file = os.path.join(log_dir, 'app.log')
+# Set up basic logging configuration
+log_level = os.getenv('LOG_LEVEL', 'DEBUG')
+logging.basicConfig(
+    level=log_level,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),  # Console output
+        logging.FileHandler(log_file)  # File output, can be accessed via SSH on Render if needed
+    ]
+)
+
+
 
 db_params = {
     'dbname': os.getenv('DB_NAME'),
@@ -28,11 +45,14 @@ def convert_decimals_to_floats(df):
 
 def createConnection():
     try:
+        logging.info('Connecting to database...')
+        logging.info(f'DB Params: {db_params}')
         conn = psycopg2.connect(**db_params)
         conn.autocommit = False
+        logging.info('Connected to database')
         return conn
     except psycopg2.Error as e:
-        print(f'Error connecting to database: {e}')
+        logging.error(f'Error connecting to database: {e}')
         raise
 
 def createTempDB(dbName):
@@ -42,9 +62,9 @@ def createTempDB(dbName):
     try:
         with conn.cursor() as cur:
             cur.execute(sql.SQL('CREATE DATABASE {}').format(sql.Identifier(dbName)))
-        print(f'Database {dbName} created')
+        logging.info(f'Database {dbName} created')
     except psycopg2.Error as e:
-        print(f'Error creating database {dbName}: {e}')
+        logging.error(f'Error creating database {dbName}: {e}')
         raise
     return f'postgresql+psycopg2://{db_params["user"]}:{db_params["password"]}@{db_params["host"]}:{db_params["port"]}/{dbName}'
 
@@ -52,13 +72,20 @@ def dropTempDB(dbName):
     conn = createConnection()
     conn.autocommit = True
     with conn.cursor() as cur:
+        cur.execute(
+                sql.SQL(
+                    "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = %s AND pid <> pg_backend_pid();"
+                ),
+                [dbName]
+            )
         cur.execute(sql.SQL('DROP DATABASE IF EXISTS {}').format(sql.Identifier(dbName)))
-    print(f'Database {dbName} dropped')
+    logging.info(f'Database {dbName} dropped')
 
 def getData(conn, **kwargs):
     tableName = kwargs.get('tableName')
     query = kwargs.get('query')
     if not tableName and not query:
+        logging.error('tableName or query must be provided')
         raise ValueError('tableName or query must be provided')
     if tableName:
         query = f'SELECT * FROM "{tableName}"'
@@ -66,6 +93,7 @@ def getData(conn, **kwargs):
     data = result.fetchall()
     columns = result.keys()
     df = pd.DataFrame(data, columns=columns)
+    logging.info(f'Fetched data from {tableName}')
     return df
 
 def create_table_if_not_exists(connection, df, table_name):
@@ -78,7 +106,7 @@ def create_table_if_not_exists(connection, df, table_name):
     try:
         connection.execute(text(create_table_query))
     except SQLAlchemyError as e:
-        print(f"Error occurred while creating table {table_name}: {e}")
+        logging.error(f"Error occurred while creating table {table_name}: {e}")
         raise
 
 def insert_data_bulk(connection, df, table_name):
@@ -93,7 +121,7 @@ def insert_data_bulk(connection, df, table_name):
             index=False,
             method='multi')
     except SQLAlchemyError as e:
-        print(f"Error occurred while inserting data into {table_name}: {e}")
+        logging.error(f"Error occurred while inserting data into {table_name}: {e}")
         raise
 
 def connectDB(filePath, dbName = 'MainFile'):
@@ -104,8 +132,9 @@ def connectDB(filePath, dbName = 'MainFile'):
         xls = pd.ExcelFile(filePath)
         totalSheets = len(xls.sheet_names)
         for i, sheet in enumerate(xls.sheet_names,1):
-            print(f'Processing {sheet}')
+            logging.info(f'Processing {sheet}')
             progressVal = int((i-0.5/totalSheets)*100)
+            logging.info(f'Progress: {progressVal}')
             if progressVal < 100:
                 yield {'progress': progressVal, 'message': f'Processing {i} of {totalSheets} Sheets: {sheet}...'}
             df = pd.read_excel(filePath, sheet_name=sheet, header=1).iloc[1:]
@@ -115,4 +144,5 @@ def connectDB(filePath, dbName = 'MainFile'):
                 yield {'progress': progressVal, 'message': f'Processing {i} of {totalSheets} Sheets: {sheet}...'}
         yield connection
     except Exception as e:
+        logging.error(f'Error occurred while connecting to DB: {e}')
         raise
