@@ -1013,9 +1013,11 @@ class GlobalAnalysisApp:
             self.fig.data = []
             data = getCutForces(self.conn, cut_name_list, load_case_name)
             self.allLegendList = []
+            aggcolor = []
 
             for Li, lType in enumerate(loadType):
                 if lType == 'TH' and agg_type != 'Ind':
+                    aggcolor.append(colList[Li])
                     colList[Li] = '#D3D3D3'
             for i in range(1,3):
                 for j in range(1,4):
@@ -1025,11 +1027,11 @@ class GlobalAnalysisApp:
                 # For each cutName in the list find average for all load case name
                 dataCut = data[data['SectionCut'].str.startswith(cutName+' - ')].reset_index(drop=True)
                 aggCaseList = []
-                aggcolor = []
+                
                 for i, case in enumerate(load_case_name):
                     if loadType[i] == 'TH':
                         aggCaseList.append(case)
-                        aggcolor.append(colList[i])
+                        
                 dataCutCase = dataCut[dataCut['OutputCase'].isin(aggCaseList)].reset_index(drop=True)
                 dataCutCase = dataCutCase.drop(columns=['OutputCase', 'SectionCut'])
                 if agg_type == 'Average':
