@@ -124,6 +124,17 @@ def insert_data_bulk(connection, df, table_name):
         logging.error(f"Error occurred while inserting data into {table_name}: {e}")
         raise
 
+def getConnection(file, dBName = 'MainFile'):
+        data = connectDB(file, dBName)
+        # Iterate through the generator to capture progress updates
+        for update in data:
+            if isinstance(update, dict) and 'progress' in update:
+                print(update['message'])  # Handle progress reporting
+            else:
+                conn = update  # The connection will be yielded last
+                break
+        return conn
+
 def connectDB(filePath, dbName = 'MainFile'):
     tempDB_url = createTempDB(dbName)
     engine = create_engine(tempDB_url, poolclass=NullPool)
