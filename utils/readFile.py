@@ -18,7 +18,7 @@ load_dotenv(env_path)
 log_dir = tempfile.gettempdir()
 log_file = os.path.join(log_dir, 'app.log')
 # Set up basic logging configuration
-log_level = os.getenv('LOG_LEVEL', 'DEBUG')
+log_level = os.getenv('LOG_LEVEL', 'INFO')
 logging.basicConfig(
     level=log_level,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -133,15 +133,15 @@ def connectDB(filePath, dbName = 'MainFile'):
         totalSheets = len(xls.sheet_names)
         for i, sheet in enumerate(xls.sheet_names,1):
             logging.info(f'Processing {sheet}')
-            progressVal = int((i-0.5/totalSheets)*100)
+            progressVal = int(((i-0.5)/totalSheets)*100)
             logging.info(f'Progress: {progressVal}')
             if progressVal < 100:
                 yield {'progress': progressVal, 'message': f'Processing {i} of {totalSheets} Sheets: {sheet}...'}
             df = pd.read_excel(filePath, sheet_name=sheet, header=1).iloc[1:]
             insert_data_bulk(connection, df, sheet)
-            progressVal = int((i/totalSheets)*100)
+            progressVal = int(((i)/totalSheets)*100)
             if progressVal != 100:
-                yield {'progress': progressVal, 'message': f'Processing {i} of {totalSheets} Sheets: {sheet}...'}
+                yield {'progress': progressVal, 'message': f'Finished Processing {i} of {totalSheets} Sheets: {sheet}...'}
         yield connection
     except Exception as e:
         logging.error(f'Error occurred while connecting to DB: {e}')
