@@ -11,14 +11,17 @@ import plotly.io as pio
 import base64
 import io
 import os
-from utils.appComponents import createUploadComponent, createMultiSelectComponent, createTextInputComponent, createNumberInputComponent, createSelectComponent, createSingleNumberInputComponent, createRadioComponent
+from utils.appComponents import createUploadComponent, createMultiSelectComponent, createTextInputComponent, createNumberInputComponent, createSelectComponent, createSingleNumberInputComponent, createRadioComponent, getCaseType, getCaseID, getCaseColor
 from GeneralizedDisplacement.defineGenDisp import defineGenDisp
 from GeneralizedDisplacement.plotGenDisp import GeneralizedDisplacement
 from utils.unitConvertor import UnitConvertor
 from utils.extraTools import wrap_text, rgb2hex
+from flask import send_file
+import threading
+import tempfile
 _dash_renderer._set_react_version("18.2.0")
 Dash(external_stylesheets=dmc.styles.ALL)
-
+pio.kaleido.scope.default_executable_path = r"C:\\Python312\\Lib\\site-packages\\kaleido\\executable\\kaleido"
 #pio.orca.config.executable = r"C:\\Python312\\Lib\\site-packages\\kaleido\\executable\\kaleido.cmd"
 
 class GlobalAnalysisApp:
@@ -65,8 +68,8 @@ class GlobalAnalysisApp:
                     [
                         dmc.TabsList(
                             [
-                                dmc.TabsTab("Section Cuts", value="section-cuts"),
-                                dmc.TabsTab("Drifts", value="drifts"),
+                                dmc.TabsTab("Section Cuts", value="section-cuts", id="section-cuts"),
+                                dmc.TabsTab("Drifts", value="drifts", id="drifts"),
                             ]
                         ),
                         dmc.TabsPanel(
@@ -133,11 +136,14 @@ class GlobalAnalysisApp:
         return dmc.MantineProvider(
             theme={"colorScheme": "light"},
             children=[
+                #dcc.Download(id="download-sectioncut-image"),
                 createUploadComponent('upload-sectioncut-data', 'Section Cut'),
                 createUploadComponent('upload-height-data', 'Height Label'),
+                createUploadComponent('upload-sectioncut-template', 'Section Cut Template'),
                 dmc.Grid([
                     createMultiSelectComponent('cut-name-list', 'Cuts'),
-                    createMultiSelectComponent('load-case-name', 'Load Cases'),
+                    createMultiSelectComponent('load-case-name', 'Load Cases', value=['1.0D+0.5L', 'SC - TP', 'SC - TN', 'MCE-All GM Average (Seis Only)']),
+                    createTextInputComponent(idName='sectionCut-model-name', label='Model Name', description='Enter the model name', value='305'),
                 ]),
                 dmc.Accordion(
                     children=[
@@ -169,7 +175,7 @@ class GlobalAnalysisApp:
                     createSelectComponent('sectionCut-output-unit', values=['lb,in,F', 'lb,ft,F', 'kip,in,F', 'kip,ft,F', 'kN,mm,C', 
                                                                            'kN,m,C', 'Kgf,mm,C', 'Kgf,m,C', 'N,mm,C', 'N,m,C', 
                                                                            'Tonf,mm,C','Tonf,m,C', 'kN,cm,C', 'Kgf,cm,C', 'N,cm,C', 
-                                                                           'Tonf,cm,C'], label='Output Unit', defaultValue='kip,ft,F'),
+                                                                           'Tonf,cm,C'], label='Output Unit', defaultValue='kN,m,C'),
                     createRadioComponent(idName='sectionCut-agg-type', values = ['Ind', 'Average', 'Min', 'Max'], showLabel = 'Aggregation Type'),
                 ]),
 
@@ -363,6 +369,7 @@ class GlobalAnalysisApp:
         self.registerUploadCallbacks('upload-gendisp-group', 'Drift Group', self.updateFileUploadText)
         self.registerUploadCallbacks('vizGenDisp-upload-analysis', 'Generalized Displacement', self.updateFileUploadText)
         self.registerUploadCallbacks('vizGenDisp-upload-height', 'Height Label', self.updateFileUploadText)
+        self.registerUploadCallbacks('upload-sectioncut-template', 'Section Cut Template', self.updateTemplateUploadText)
         
         self.updateProgressBar('upload-sectioncut-data')
         self.updateProgressBar('upload-height-data')
@@ -391,6 +398,19 @@ class GlobalAnalysisApp:
                 return downloadData, False
             return no_update, True
         
+        # Update File Name and plot title base of cuts in cutList
+        @self.app.callback(
+            [Output('sectionCut-plot-title', 'value'),
+            Output('sectionCut-plot-filename', 'value')],
+            [Input('cut-name-list', 'value'),
+            Input('sectionCut-model-name', 'value')],
+        )
+        def updateSectionCutPlotTitle(cutList, modelName):
+            if not cutList:
+                return 'Model XX - Responses (XX)', 'XX_SectionCut_XX'
+            return (f'Model {modelName} - Responses ({"_".join(cutList)})', f'{modelName}_SectionCut_{"_".join(cutList)}')
+
+
         # Update label of shear-min, shear-max, shear-step, axial-min, axial-max, axial-step, moment-min, moment-max, moment-step, torsion-min, torsion-max, torsion-step
         @self.app.callback(
             [Output('shear-min', 'label'),
@@ -494,7 +514,7 @@ class GlobalAnalysisApp:
                     style={'textAlign': 'center', 'padding': '0 15px'}),
                     html.Td(dmc.TextInput(
                         id = {"type": "sectionCut-cut-id", "index": cut},
-                        value = cut, required=True,error=''), style={'textAlign': 'center', 'padding': '0 15px'})
+                        value = '', required=True,error=''), style={'textAlign': 'center', 'padding': '0 15px'})
                 ])
                 rows.append(row)
             return html.Table([
@@ -522,10 +542,10 @@ class GlobalAnalysisApp:
                     html.Td(case, style={'textAlign': 'center', 'padding': '0 15px'}),
                     html.Td(dmc.TextInput(
                         id = {"type": "sectionCut-case-id", "index": case},
-                        value = case, required=True,error=''), style={'textAlign': 'center', 'padding': '0 15px'}),
+                        value = getCaseID(case), required=True,error=''), style={'textAlign': 'center', 'padding': '0 15px'}),
                     html.Td(dmc.ColorInput(
                         id = {"type": "sectionCut-case-color", "index": case},
-                        value = colList[cI],
+                        value = getCaseColor(case, colList[cI]),
                         swatches=[ 
                         "#25262b","#868e96","#fa5252","#e64980","#be4bdb",
                         "#7950f2","#4c6ef5","#228be6","#15aabf","#12b886",
@@ -534,7 +554,7 @@ class GlobalAnalysisApp:
                         style={'textAlign': 'center', 'padding': '0 15px'}),
                     html.Td(dmc.Select(
                         id = {"type": "sectionCut-case-type", "index": case},
-                        value = 'TH' if 'MCE' in case else 'NonLin' if '1.0D' in case else 'RS' if 'SLE' in case else 'Lin', 
+                        value = getCaseType(case), 
                         data = ['Lin', 'NonLin', 'RS', 'TH'],
                         nothingFoundMessage=f'No Load Case Type Found',
                         searchable=True), 
@@ -626,7 +646,7 @@ class GlobalAnalysisApp:
                         style={'textAlign': 'center', 'padding': '0 15px'}),
                     html.Td(dmc.Select(
                         id = {"type": "vizGenDisp-case-type", "index": GM},
-                        value = 'TH' if 'MCE' in GM else 'NonLin' if '1.0D' in GM else 'RS' if 'SLE' in GM else 'Lin', 
+                        value = getCaseType(GM), 
                         data = ['Lin', 'NonLin', 'RS', 'TH'],
                         nothingFoundMessage=f'No Load Case Type Found',
                         searchable=True), 
@@ -767,6 +787,7 @@ class GlobalAnalysisApp:
             [Output('data-table', 'data', allow_duplicate=True),
             Output('sectionCut_figure', 'figure', allow_duplicate=True),
             Output('sectionCut_figure', 'config', allow_duplicate=True),],
+            #Output("download-sectioncut-image", "data"),],
             [Input('submit-button-sectionCut', 'n_clicks')],
             [State('cut-name-list', 'value'),State({'type': 'sectionCut-lineType', 'index': ALL}, 'value'),
             State('load-case-name', 'value'),State({'type': 'sectionCut-case-color', 'index': ALL}, 'value'),State({'type': 'sectionCut-case-id', 'index': ALL}, 'value'),State({'type': 'sectionCut-case-type', 'index': ALL}, 'value'),
@@ -781,6 +802,16 @@ class GlobalAnalysisApp:
             prevent_initial_call=True,
             suppress_callback_exceptions=True
         )(self.plotData)
+
+        # Flask route for downloading the image
+    
+    def routes(self):
+        @self.app.server.route('/download_image/<filename>')
+        def download_image(filename):
+            img_bytes = io.BytesIO()
+            pio.write_image(self.fig, img_bytes, format='png')
+            img_bytes.seek(0)
+            return send_file(img_bytes, mimetype='image/png', attachment_filename=filename, as_attachment=True)
 
     
     def registerTabChangeCallbacks(self, componentID, callbackMethod):
@@ -832,6 +863,29 @@ class GlobalAnalysisApp:
                 return no_update
 
     
+    def updateTemplateUploadText(self, **kwargs):
+        contents = kwargs.get('contents')
+        filename = kwargs.get('filename')
+        fileCategory = kwargs.get('fileCategory')
+        storedData = kwargs.get('storedData')
+        self.SectionCutTemplate = None 
+        if contents is not None:
+            if storedData is None:
+                storedData = {}
+            _, content_string = contents.split(',')
+            decoded = base64.b64decode(content_string)
+            file = io.BytesIO(decoded)
+            self.plotList = pd.read_excel(file)
+            print(self.plotList)
+            yield 100, storedData, html.Div(['File ', html.B(html.A(filename, style = {'color':'blue'})), ' Uploaded. Drag/Drop/Select another file if desired.'])
+        else:
+            yield 0, no_update, html.Div([
+                f'Drag and Drop the {fileCategory} File or ',
+                html.A('Select a File')
+            ])
+
+        
+
     def updateFileUploadText(self, **kwargs):
         contents = kwargs.get('contents')
         filename = kwargs.get('filename')
@@ -1008,7 +1062,9 @@ class GlobalAnalysisApp:
             self.fig.data = []
             return [], self.fig
     
-    def plotData(self, plotClicks, cut_name_list, typeList, load_case_name, colList, loadLabel, loadType, plot_title,file_name, shear_lims, axial_lims, moment_lims, torsion_lims, height_lims, agg_type, inUnit, outUnit, cut_id):
+    def plotData(self, plotClicks, cut_name_list, typeList, load_case_name, colList, loadLabel, 
+                 loadType, plot_title,file_name, shear_lims, axial_lims, moment_lims, torsion_lims, 
+                 height_lims, agg_type, inUnit, outUnit, cut_id):
         if plotClicks:
             self.fig.data = []
             data = getCutForces(self.conn, cut_name_list, load_case_name)
@@ -1110,11 +1166,28 @@ class GlobalAnalysisApp:
             'modeBarButtonsToAdd': ['drawline', 'drawcircle', 'drawrect', 'eraseshape', 'togglespikelines']
             }
 
+            #print('Plotting Done')
+            #with tempfile.NamedTemporaryFile(suffix=".png") as tmpfile:
+            #    pio.write_image(self.fig, tmpfile.name, format="png")
+            #    tmpfile.seek(0)
+            #    img_bytes = tmpfile.read()
+
+            #print('image bytes read')
 
             return data.to_dict('records'), self.fig, config
     
     def runApp(self):
-        self.app.run_server(debug=True, port = self.port)     
+        self.app.run_server(debug=True, port = self.port) 
+
+    #def runApp(self):
+        # Start Dash server in a separate thread
+    #    app_thread = threading.Thread(target=self._run_dash_server)
+    #    app_thread.daemon = True  # Allows thread to exit when the main program exits
+    #    app_thread.start()
+
+    def _run_dash_server(self):
+        # This method will be run in a separate thread
+        self.app.run_server(debug=True, port=self.port)    
 
     def plotCases(self, colList, typeList, cutI, cutName, cI, case, filtered_data, StepType, showLegend, SF=1.0, loadLabel = '', agg_type = 'Ind', lineWidth = 2, inUnit = 'kN,m,C', outUnit = 'kN,m,C'):
         if cutName:

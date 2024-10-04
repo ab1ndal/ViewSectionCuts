@@ -4,12 +4,13 @@ import glob
 from PIL import Image
 
 class BaseDisp:
-    def __init__(self, fileLoc, fileName, caseList, groupList):
+    def __init__(self, fileLoc, fileName, caseList, groupList, reverse=False):
         self.fileLoc = fileLoc
         self.fileName = fileName
         self.db = getConnection(fileName)
         self.caseList = caseList
         self.groupList = groupList
+        self.reverse = reverse
         
     def getJointDisp(self, groupName):
         query = f"""
@@ -31,8 +32,8 @@ class BaseDisp:
             GROUP BY "Joint", "OutputCase"
         ),
         min_coord AS (
-            SELECT MAX(CAST("XorR" AS FLOAT)) AS "Xmax",
-                   MAX(CAST("Y" AS FLOAT)) AS "Ymax"
+            SELECT {"MAX" if self.reverse else "MIN"}(CAST("XorR" AS FLOAT)) AS "Xmax",
+                   {"MAX" if self.reverse else "MIN"}(CAST("Y" AS FLOAT)) AS "Ymax"
             FROM "Joint Coordinates"
             WHERE "Joint" IN (
                 SELECT "ObjectLabel"
@@ -59,13 +60,7 @@ class BaseDisp:
         """
         return getData(self.db, query=query)
     
-    def plotBaseDisp(self,sf=10):
-        #set colorscale for the arrow colors
-        # colors maps values from -20 to +20 to colors red to blue
-        cmap_U3 = plt.cm.RdYlGn_r
-        cmap_U2 = plt.cm.RdYlGn
-        norm = plt.Normalize(-10, 10)
-
+    def plotBaseDisp(self,sf=[20, 1000]):
         for group in self.groupList:
             df = self.getJointDisp(group)
             print(f'Group: {group}')
@@ -78,11 +73,13 @@ class BaseDisp:
                 #dfCase = dfCase.sort_values(by=['Z'], ascending=[True])
                 ax[0].plot(dfCase["T"], dfCase["Z"], color = 'black', linewidth=0.5)
                 ax[1].plot(dfCase["T"], dfCase["Z"], color = 'black', linewidth=0.5)
+                scale = sf[0] if "MCE" in case else sf[1]
+                signage = -1 if self.reverse else 1
                 # draw arrows at each point to show the direction of the displacement
-                ax[0].plot(dfCase["T"]-dfCase["U2min"]/1000*sf, dfCase["Z"], color='red',linewidth=0.5)
-                ax[0].plot(dfCase["T"]-dfCase["U2max"]/1000*sf, dfCase["Z"], color='blue',linewidth=0.5)
-                ax[1].plot(dfCase["T"], dfCase["Z"]+dfCase["U3min"]/1000*sf, color='red',linewidth=0.5)
-                ax[1].plot(dfCase["T"], dfCase["Z"]+dfCase["U3max"]/1000*sf, color='blue',linewidth=0.5)
+                ax[0].plot(dfCase["T"] + signage * dfCase["U2min"]/1000*scale, dfCase["Z"], color='red',linewidth=0.5)
+                ax[0].plot(dfCase["T"] + signage * dfCase["U2max"]/1000*scale, dfCase["Z"], color='blue',linewidth=0.5)
+                ax[1].plot(dfCase["T"], dfCase["Z"]+dfCase["U3min"]/1000*scale, color='red',linewidth=0.5)
+                ax[1].plot(dfCase["T"], dfCase["Z"]+dfCase["U3max"]/1000*scale, color='blue',linewidth=0.5)
                 #for i in range(len(dfCase)):
                 #    u2Color = cmap_U2(norm(dfCase["U2max"].iloc[i]))
                 #    u3Color = cmap_U3(norm(dfCase["U3max"].iloc[i]))
@@ -94,17 +91,7 @@ class BaseDisp:
                 # Add min max values to the plot as a text in the top left corner
                 ax[0].text(0.05, 0.95, f'Max U2: {dfCase["U2max"].max():.2f} mm\nMin U2: {dfCase["U2min"].min():.2f} mm', transform=ax[0].transAxes, fontsize=8, verticalalignment='top')
                 ax[1].text(0.05, 0.95, f'Max U3: {dfCase["U3max"].max():.2f} mm\nMin U3: {dfCase["U3min"].min():.2f} mm', transform=ax[1].transAxes, fontsize=8, verticalalignment='top')
-                #Show colorbar
-                #sm_U2 = plt.cm.ScalarMappable(cmap=cmap_U2, norm=norm)
-                #sm_U2.set_array([])
-                #cbar_U2 = plt.colorbar(sm_U2, ax=ax[0], orientation='horizontal')
-                #cbar_U2.set_label('U2 (mm)', fontsize=8)
-                #cbar_U2.ax.tick_params(labelsize=8)
-                #sm_U3 = plt.cm.ScalarMappable(cmap=cmap_U3, norm=norm)
-                #sm_U3.set_array([])
-                #cbar_U3 = plt.colorbar(sm_U3, ax=ax[1], orientation='horizontal')
-                #cbar_U3.set_label('U3 (mm)', fontsize=8)
-                #cbar_U3.ax.tick_params(labelsize=8)
+                
                 ax[0].set_xlabel('Wall Length (m)')
                 ax[0].set_ylabel('Height (m)')
                 ax[1].set_xlabel('Wall Length (m)')
@@ -158,15 +145,16 @@ def save_images_as_pdf(fileLoc, groupList):
 
 
 if __name__ == '__main__':
-    fileLoc = r'C:\\Users\\abindal\\OneDrive - Nabih Youssef & Associates\\Documents\\00_Projects\\06_The Vault\\305\\20240918\\'
-    fileName = fileLoc + '20240918_305_BaseJointDisp.xlsx'
-    #caseList = ['1.0D+0.5L+TP', '1.0D+0.5L+TN']
-    caseList = ['MCE-GM01','MCE-GM02', 'MCE-GM03',
+    fileLoc = r'C:\\Users\\abindal\\OneDrive - Nabih Youssef & Associates\\Documents\\00_Projects\\06_The Vault\\205\\'
+    fileName = fileLoc + '20240911_205_UB_BaseJointDisp.xlsx'
+    caseList = ['1.0D+0.5L+TP', '1.0D+0.5L+TN',
+                'MCE-GM01','MCE-GM02', 'MCE-GM03',
                 'MCE-GM04', 'MCE-GM05', 'MCE-GM06',
                 'MCE-GM07', 'MCE-GM08', 'MCE-GM09',
                 'MCE-GM10', 'MCE-GM11']
     groupList = ['Base_S13A', 'Base_S12', 'Base_S12A', 'Base_S12B', 'Base_S12C', 'Base_S12D']
-    #baseDisp = BaseDisp(fileLoc, fileName, caseList, groupList)
-    #baseDisp.plotBaseDisp(sf=20)
+    groupList = ['Base_N13A', 'Base_N12', 'Base_N12A', 'Base_N12B', 'Base_N12C', 'Base_N12D']  
+    baseDisp = BaseDisp(fileLoc, fileName, caseList, groupList, reverse=False)
+    baseDisp.plotBaseDisp(sf=[20,1000])
     save_images_as_pdf(fileLoc, groupList)
 

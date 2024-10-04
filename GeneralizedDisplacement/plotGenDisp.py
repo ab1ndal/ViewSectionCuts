@@ -67,7 +67,8 @@ class GeneralizedDisplacement:
             self.heightMult = 1
 
         self.compiledDrift = None
-        self.LABEL_LEGEND_FONT_SIZE = 8
+        self.LABEL_FONT_SIZE = 8
+        self.LEGEND_FONT_SIZE = 6
         self.assignDriftLimit(Dlim = kwargs['Dlim'], Dmax = kwargs['Dmax'], Dstep = kwargs['Dstep'])
         self.assignHeightLimits(Hmin = kwargs['Hmin'], Hmax = kwargs['Hmax'])
 
@@ -343,11 +344,11 @@ class GeneralizedDisplacement:
     
     def formataxis(self, ax, plotType):
         ax.set_yticks(self.heightData['SAP2000Elev'])
-        ax.set_yticklabels(self.heightData['FloorLabel'], fontsize=self.LABEL_LEGEND_FONT_SIZE)
+        ax.set_yticklabels(self.heightData['FloorLabel'], fontsize=self.LABEL_FONT_SIZE)
         ax.set_ylabel('Story')
         secax_y = ax.secondary_yaxis('right')
         secax_y.set_yticks(self.heightData['SAP2000Elev'])
-        secax_y.set_yticklabels([int(round(x,0)) for x in self.heightData['SAP2000Elev']], fontsize=self.LABEL_LEGEND_FONT_SIZE)
+        secax_y.set_yticklabels([int(round(x,0)) for x in self.heightData['SAP2000Elev']], fontsize=self.LABEL_FONT_SIZE)
         secax_y.set_ylabel('Height (m)')
         ax.set_ylim(self.Hmin, self.Hmax)
 
@@ -356,14 +357,14 @@ class GeneralizedDisplacement:
             if self.showLimit:
                 ax.vlines(self.Dlim, self.Hmin, self.Hmax, linestyle='--', color = 'red', linewidth=1.5, label=self.DlimName)
             ax.set_xticks(np.arange(0, self.Dmax + self.Dstep, self.Dstep))
-            ax.set_xticklabels(['{:.1f}%'.format(x*100) for x in ax.get_xticks()], fontsize=self.LABEL_LEGEND_FONT_SIZE)
+            ax.set_xticklabels(['{:.1f}%'.format(x*100) for x in ax.get_xticks()], fontsize=self.LABEL_FONT_SIZE)
             ax.set_xlabel('Drift (%)')
         if plotType == 'Disp':
             ax.set_xlim(self.DispMin, self.DispMax)
             ax.set_xticks(np.arange(self.DispMin, self.DispMax + self.DispStep, self.DispStep))
-            ax.set_xticklabels(['{:.2f}'.format(x) for x in ax.get_xticks()], fontsize=self.LABEL_LEGEND_FONT_SIZE)
+            ax.set_xticklabels(['{:.2f}'.format(x) for x in ax.get_xticks()], fontsize=self.LABEL_FONT_SIZE)
             ax.set_xlabel(f'Displacement ({self.lenUnit})')
         ax.grid(which='both', linestyle='--', linewidth=0.5)
-        ax.legend(loc='lower right', fontsize=self.LABEL_LEGEND_FONT_SIZE)
+        ax.legend(loc='lower right', fontsize=self.LEGEND_FONT_SIZE)
         
         return ax

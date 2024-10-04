@@ -40,6 +40,74 @@ def createUploadComponent(idName, label, **kwargs):
                 ], span=12),
             ])
 
+def getCaseType(caseName):
+    # value = 'TH' if 'MCE' in case else 'NonLin' if '1.0D' in case or 'TP' or 'TN') in case else 'RS' if 'SLE' in case else 'Lin'
+    if 'MCE' in caseName:
+        return 'TH'
+    elif '1.0D' in caseName or 'TP' in caseName or 'TN' in caseName:
+        return 'NonLin'
+    elif 'SLE' in caseName:
+        return 'RS'
+    else:
+        return 'Lin'
+
+def getCaseID(caseName):
+    if 'MCE' in caseName:
+        return 'MCE-Only'
+    elif '1.0D' in caseName:
+        return 'D+0.5L'
+    elif 'TP' in caseName:
+        return 'T-Pos'
+    elif 'TN' in caseName:
+        return 'T-Neg'
+    return caseName
+
+def getCaseColor(caseName, colorName):
+    if 'MCE' in caseName:
+        return '#40c057'
+    elif '1.0D' in caseName:
+        return '#25262b'
+    elif 'TP' in caseName:
+        return '#fa5252'
+    elif 'TN' in caseName:
+        return '#228be6'
+    return colorName
+
+def getRoundValue(valList):
+
+    #get the absolute max and min value in the list, then get the max of the absolute value
+    #then round to nearest 1000 if the value is in the range of 1000 to 10000
+    #round to nearest 10000 if the value is in the range of 10000 to 100000
+    #round to nearest 100000 if the value is in the range of 100000 to 1000000
+    #round to nearest 1000000 if the value is in the range of 1000000 to 10000000
+    #round to nearest 10000000 if the value is in the range of 10000000 to 100000000
+    #return rounded value from -value to +value
+    # also determine a step size which is 1/8th of the rounded value
+
+    maxVal = max(valList)
+    minVal = min(valList)
+    absMax = max(abs(maxVal), abs(minVal))
+    if absMax < 10000:
+        roundVal = round(absMax, -3)
+        stepVal = roundVal/8
+    elif absMax < 100000:
+        roundVal = round(absMax, -4)
+        stepVal = roundVal/8
+    elif absMax < 1000000:
+        roundVal = round(absMax, -5)
+        stepVal = roundVal/8
+    elif absMax < 10000000:
+        roundVal = round(absMax, -6)
+        stepVal = roundVal/8
+    elif absMax < 100000000:
+        roundVal = round(absMax, -7)
+        stepVal = roundVal/8
+    else:
+        roundVal = round(absMax, -8)
+        stepVal = roundVal/8
+    
+    return roundVal, stepVal
+
 def createMultiSelectComponent(idName, label, **kwargs):
     if 'data' in kwargs:
         data = kwargs['data']
