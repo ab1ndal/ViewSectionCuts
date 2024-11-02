@@ -362,7 +362,7 @@ class GeneralizedDisplacement:
         if plotType == 'Disp':
             ax.set_xlim(self.DispMin, self.DispMax)
             ax.set_xticks(np.arange(self.DispMin, self.DispMax + self.DispStep, self.DispStep))
-            ax.set_xticklabels(['{:.2f}'.format(x) for x in ax.get_xticks()], fontsize=self.LABEL_FONT_SIZE)
+            ax.set_xticklabels(['{:.1f}'.format(x) for x in ax.get_xticks()], fontsize=self.LABEL_FONT_SIZE)
             ax.set_xlabel(f'Displacement ({self.lenUnit})')
         ax.grid(which='both', linestyle='--', linewidth=0.5)
         ax.legend(loc='lower right', fontsize=self.LEGEND_FONT_SIZE)
