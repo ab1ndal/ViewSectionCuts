@@ -9,7 +9,7 @@ import os
 # Excel file containing the wall properties (fc, fy, lw, tw, fce, fye)
 # Excel file containing the section cut forces (F1, F2, F3, StepType, CaseType) in k-ft
 #######################################################################################################
-baseFile = '20250207_305_GapFriction_LB_MCE_WallStresses.xlsx'
+baseFile = '20250207_305_GapFriction_UB_MCE_Design_WallStresses.xlsx'
 wallProperties = 'Properties.xlsx'
 wallList = ['S12A', 'S12B', 'S12C', 'S12D', 'S12', 'S13A', 'Avg']
 #wallList = ['S12A']
@@ -22,17 +22,15 @@ Bseismic = 1.35
 # Toggle if you want to use Bseismic only
 use_only_seismic = False
 phi = 0.75
-ModelName = '305-LB-Gap'
+ModelName = '305-UB-Gap'
 #ModelName = '305-UB-Control_FC3'  
 
 # Name of the cases to be analyzed
 # If you are getting ratios, the first two cases will be used to get the ratio
 # 1st one should be Gravity Case
 # 2nd one should be Seismic Only Case
-tempCases = ['1.0D+0.5L', '1.3Ie*MCE,avg', 'MCE-GM01 (ENV)', 'MCE-GM02 (ENV)', 'MCE-GM03 (ENV)', 'MCE-GM04 (ENV)', 
-             'MCE-GM05 (ENV)', 'MCE-GM06 (ENV)', 'MCE-GM07 (ENV)', 'MCE-GM08 (ENV)', 'MCE-GM09 (ENV)', 'MCE-GM10 (ENV)', 'MCE-GM11 (ENV)']
-tempCaseName = ['Gravity', '1.3IeMCE,avg', 'Gravity+MCE01', 'Gravity+MCE02', 'Gravity+MCE03', 'Gravity+MCE04', 'Gravity+MCE05',
-                'Gravity+MCE06', 'Gravity+MCE07', 'Gravity+MCE08', 'Gravity+MCE09', 'Gravity+MCE10', 'Gravity+MCE11']
+tempCases = ['1.0D+0.5L', '1.3Ie*MCE,avg', '(1.2D+Lexp)+0.5T,env+1.3Ie*(MCE,avg)', '(0.9D)+0.5T,env+1.3Ie*(MCE,avg)']
+tempCaseName = ['Gravity', '1.3IeMCE,avg', '1.2D+L+0.5T+1.3IeMCE', '0.9D+0.5T+1.3IeMCE']
 
 #Get Ratio. If you don't want to compute ratios set this to False
 getRatio = False
@@ -40,7 +38,7 @@ getRatio = False
 #tempCases = ['PushoverTest']
 #tempCaseName = ['Push']
 
-fileLoc = r'C:\\Users\\abindal\\OneDrive - Nabih Youssef & Associates\\Documents - The Vault\\Calculations\\2025.02.07 - Gap Friction Models Stage 3C\\Model Results\\305\\20250207_305_GapFriction_LB\\Wall Stresses\\'
+fileLoc = r'C:\\Users\\abindal\\OneDrive - Nabih Youssef & Associates\\Documents - The Vault\\Calculations\\2025.02.07 - Gap Friction Models Stage 3C\\Model Results\\305\\20250207_305_GapFriction_UB\\Wall Stresses\\'
 
 ########################################################################################################
 
@@ -81,12 +79,12 @@ maxVdes['StressRatio'] = maxVdes['StressRatio'].round(2)
 maxVdes['AxialRatio'] = maxVdes['F3']*1000/(maxVdes['lw']*maxVdes['tw'])
 maxVdes.drop(columns=['sqrt_fc', 'fc', 'fy', 'fye', 'lw', 'tw', 'fce', 'Cut', 'SectionCut', 'Vdes'], inplace=True)
 
-print(maxVdes.head())
+#print(maxVdes.head())
 
 maxVdes_avg = maxVdes[['OutputCase', 'Z', 'StressRatio', 'AxialRatio']] \
     .groupby(['OutputCase', 'Z'])[['StressRatio', 'AxialRatio']].mean().reset_index()
 maxVdes_avg['Wall'] = 'Avg'
-print(maxVdes_avg.head())
+#print(maxVdes_avg.head())
 maxVdes = pd.concat([maxVdes, maxVdes_avg], ignore_index=True)
 maxVdes.to_excel(f'{fileLoc}{ModelName}_VdesRatios.xlsx', index=False)
 
@@ -103,6 +101,7 @@ def plot_heatmap(**kwargs):
     caseName = kwargs['caseName']
     ModelType = kwargs['ModelType']
     plotType = kwargs['plotType']
+    print(f'Processing {caseName} - {plotType}')
 
     if 'plotWalls' in kwargs:
         plotWalls = kwargs['plotWalls']
@@ -120,7 +119,7 @@ def plot_heatmap(**kwargs):
             stress_pivot = stressRatio.pivot(index='Z', columns='Wall', values=plotType)
             stress_pivot = stress_pivot.reindex(columns=wallNames)
 
-            print(stress_pivot)
+            #print(stress_pivot)
 
             # Plot the heat map
             fig, ax = plt.subplots(figsize=(5,10))
