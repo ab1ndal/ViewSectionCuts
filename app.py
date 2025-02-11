@@ -21,7 +21,7 @@ import threading
 import tempfile
 _dash_renderer._set_react_version("18.2.0")
 Dash(external_stylesheets=dmc.styles.ALL)
-pio.kaleido.scope.default_executable_path = r"C:\\Python312\\Lib\\site-packages\\kaleido\\executable\\kaleido"
+#pio.kaleido.scope.default_executable_path = r"C:\\Python312\\Lib\\site-packages\\kaleido\\executable\\kaleido"
 #pio.orca.config.executable = r"C:\\Python312\\Lib\\site-packages\\kaleido\\executable\\kaleido.cmd"
 
 class GlobalAnalysisApp:
