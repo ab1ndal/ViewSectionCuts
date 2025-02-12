@@ -14,7 +14,7 @@ def groupListFromGrid(gridList, topSuffix, botSuffix):
     query = f"""
         SELECT "GroupName", "ObjectLabel"
         FROM "Groups 2 - Assignments" 
-        WHERE "ObjectType" = "Joint"
+        WHERE "ObjectType" = 'Joint'
         AND "GroupName" IN ({groupListSQL})
     """
     return query,grid
