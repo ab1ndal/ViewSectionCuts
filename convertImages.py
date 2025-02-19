@@ -18,16 +18,16 @@ def convert_images_to_pdf(folder_path, rows=2, columns=2, orientation='portrait'
         return
 
     # Filter "Overall" files and sort them in the required order
-    overall_files = [f for f in png_files if 'Overkall' in f]
+    overall_files = [f for f in png_files if 'Overall' in f]
 
     # Get the rest of the files (non-overall)
     other_files = [f for f in png_files if f not in overall_files]
 
     # Create the "Overall" ordered PDF
-    #create_pdf(overall_files, '305-LB_Overall_SectioncutForces_SLE.pdf', orientation, dpi, rows, columns, folder_path)
+    create_pdf(overall_files, '305-LB_Overall_SectioncutForces_MCE.pdf', orientation, dpi, rows, columns, folder_path)
 
     # Create the "Other" PDF for the rest of the files
-    create_pdf(other_files, '302_Gridline_SectionCutForces_MCE.pdf', orientation, dpi, rows, columns, folder_path)
+    #create_pdf(other_files, '305_UB_Gridline_SectionCutForces_MCE.pdf', orientation, dpi, rows, columns, folder_path)
 
 
 # Function to create PDF from a list of images
@@ -40,10 +40,10 @@ def create_pdf(image_files, output_pdf, orientation='portrait', dpi=600, rows=2,
     scale_factor = dpi / 72.0
 
     # Define page dimensions (portrait or landscape)
-    if orientation == 'portrait':
-        page_width, page_height = int(300 * scale_factor), int(600 * scale_factor)  # 8.5 x 11 inches
-    else:  # landscape
-        page_width, page_height = int(600 * scale_factor), int(300 * scale_factor)
+    page_width, page_height = int(8.5 * 72 * scale_factor), int(11 * 72 * scale_factor)  # 8.5 x 11 inches
+    
+    if orientation == 'landscape':
+        page_width, page_height = page_height, page_width
 
     # Calculate the number of pages required
     num_pages = math.ceil(len(image_files) / (rows * columns))
@@ -150,11 +150,11 @@ def combine_pdfs(file_loc, pdf_files, output_pdf):
 
 
 # Example usage
-#loc = r"C:\\Users\\abindal\\OneDrive - Nabih Youssef & Associates\\Documents\\00_Projects\\06_The Vault\\20240905_302\\New Run\\"
-#convert_images_to_pdf(loc, rows=2, columns=1, orientation='portrait')
+loc = r"C:\\Users\\abindal\\OneDrive - Nabih Youssef & Associates\\Documents - The Vault\\Calculations\\2025 -  Stage 3C\\305 - Model Results\\20250207_305_FineMesh_LB\SectionCuts\\"
+convert_images_to_pdf(loc, rows=2, columns=1, orientation='portrait')
 
-loc = r"C:\\Users\\abindal\\Downloads\\205-LB_DispDrift_MCE-avg\\"
-gridline = ['N12A', 'N12B', 'N12C', 'N12D', 'N12', 'N13A', 'N13B', 'N13C', 'N13D', 'N13E', 'N13F', 'N13G', 'N13H']
+#loc = r"C:\\Users\\abindal\\Downloads\\205-LB_DispDrift_MCE-avg\\"
+#gridline = ['N12A', 'N12B', 'N12C', 'N12D', 'N12', 'N13A', 'N13B', 'N13C', 'N13D', 'N13E', 'N13F', 'N13G', 'N13H']
 #gmlist = ['1.0D+0.5L', 'SC - TP', 'SC -TN', 'SLE - 1% Damped - U1', 'SLE - 1% Damped - U2', f'1.0D+.75T+Lexp+Env(100%+30% SLE)']
-gmlist = ['1.0D+0.5L', 'SC - TP', 'SC -TN', 'MCE-All GM Average', 'D+0.5L+0.5T+MCEavg']
-convert_disp_drift_to_pdf(loc, rows=2, columns=2, orientation='landscape', gridline=gridline, gm_type=gmlist, prefix='205-LB', suffix='MCE-Avg')
+#gmlist = ['1.0D+0.5L', 'SC - TP', 'SC -TN', 'MCE-All GM Average', 'D+0.5L+0.5T+MCEavg']
+#convert_disp_drift_to_pdf(loc, rows=2, columns=2, orientation='landscape', gridline=gridline, gm_type=gmlist, prefix='205-LB', suffix='MCE-Avg')

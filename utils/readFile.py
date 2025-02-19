@@ -15,18 +15,18 @@ import tempfile
 env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
 load_dotenv(env_path)
 
-log_dir = tempfile.gettempdir()
-log_file = os.path.join(log_dir, 'app.log')
+#log_dir = tempfile.gettempdir()
+#log_file = os.path.join(log_dir, 'app.log')
 # Set up basic logging configuration
-log_level = os.getenv('LOG_LEVEL', 'INFO')
-logging.basicConfig(
-    level=log_level,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(),  # Console output
-        logging.FileHandler(log_file)  # File output, can be accessed via SSH on Render if needed
-    ]
-)
+#log_level = os.getenv('LOG_LEVEL', 'INFO')
+#logging.basicConfig(
+#    level=log_level,
+#    format='%(asctime)s - %(levelname)s - %(message)s',
+#    handlers=[
+#        logging.StreamHandler(),  # Console output
+#        logging.FileHandler(log_file)  # File output, can be accessed via SSH on Render if needed
+#    ]
+#)
 
 
 

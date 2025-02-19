@@ -9,7 +9,7 @@ import os
 # Excel file containing the wall properties (fc, fy, lw, tw, fce, fye)
 # Excel file containing the section cut forces (F1, F2, F3, StepType, CaseType) in k-ft
 #######################################################################################################
-baseFile = '20250207_305_GapFriction_UB_MCE_Design_WallStresses.xlsx'
+baseFile = '20250207_305_UB_FineMesh_WallStresses_2.xlsx'
 wallProperties = 'Properties.xlsx'
 wallList = ['S12A', 'S12B', 'S12C', 'S12D', 'S12', 'S13A', 'Avg']
 #wallList = ['S12A']
@@ -22,7 +22,7 @@ Bseismic = 1.35
 # Toggle if you want to use Bseismic only
 use_only_seismic = False
 phi = 0.75
-ModelName = '305-UB-Gap'
+ModelName = '305-UB-FM'
 #ModelName = '305-UB-Control_FC3'  
 
 # Name of the cases to be analyzed
@@ -38,7 +38,7 @@ getRatio = False
 #tempCases = ['PushoverTest']
 #tempCaseName = ['Push']
 
-fileLoc = r'C:\\Users\\abindal\\OneDrive - Nabih Youssef & Associates\\Documents - The Vault\\Calculations\\2025.02.07 - Gap Friction Models Stage 3C\\Model Results\\305\\20250207_305_GapFriction_UB\\Wall Stresses\\'
+fileLoc = r'C:\\Users\\abindal\\OneDrive - Nabih Youssef & Associates\\Documents - The Vault\\Calculations\\2025 -  Stage 3C\\305 - Model Results\\20250207_305_FineMesh_UB\\Wall Stresses\\'
 
 ########################################################################################################
 

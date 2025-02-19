@@ -24,6 +24,19 @@ Dash(external_stylesheets=dmc.styles.ALL)
 #pio.kaleido.scope.default_executable_path = r"C:\\Python312\\Lib\\site-packages\\kaleido\\executable\\kaleido"
 #pio.orca.config.executable = r"C:\\Python312\\Lib\\site-packages\\kaleido\\executable\\kaleido.cmd"
 
+import logging
+
+class NoPostRequestsFilter(logging.Filter):
+    def filter(self, record):
+        return "POST /_dash-update-component" not in record.getMessage()
+
+# Get the werkzeug logger
+log = logging.getLogger('werkzeug')
+log.setLevel(logging.INFO)  # Keep INFO logs but filter out specific ones
+
+# Add filter to remove unwanted logs
+log.addFilter(NoPostRequestsFilter())
+
 class GlobalAnalysisApp:
     def __init__(self):
         self.app = Dash(__name__)
@@ -142,7 +155,7 @@ class GlobalAnalysisApp:
                 createUploadComponent('upload-sectioncut-template', 'Section Cut Template'),
                 dmc.Grid([
                     createMultiSelectComponent('cut-name-list', 'Cuts'),
-                    createMultiSelectComponent('load-case-name', 'Load Cases', value=['1.0D+0.5L', 'SC - TP', 'SC - TN', 'MCE-All GM Average (Seis Only)']),
+                    createMultiSelectComponent('load-case-name', 'Load Cases', value=['1.0D+0.5L', 'End of Staged Construction - TP', 'End of Staged Construction - TN', 'MCE-All GM Average (Seis Only)']),
                     createTextInputComponent(idName='sectionCut-model-name', label='Model Name', description='Enter the model name', value='305'),
                 ]),
                 dmc.Accordion(
@@ -191,7 +204,8 @@ class GlobalAnalysisApp:
                     children=[
                         dmc.AccordionItem(
                             [
-                                dmc.AccordionControl(dmc.Text("Click to reveal plot limit options...", fw=500, size = 'lg', c='blue')),
+                                dmc.AccordionControl(dmc.Text("Click to reveal plot limit options...", fw=500, size = 'lg', c='blue'),
+                                                     id="plot-limit-accordion-button"),
                                 dmc.AccordionPanel(
                                     html.Div([createNumberInputComponent('Shear',    -25e2,   25e2, 500, 'kN'),
                                     createNumberInputComponent('Axial',        0,   25e3, 5e3, 'kN'),
