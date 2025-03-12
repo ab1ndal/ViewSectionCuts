@@ -1180,6 +1180,8 @@ class GlobalAnalysisApp:
             'modeBarButtonsToAdd': ['drawline', 'drawcircle', 'drawrect', 'eraseshape', 'togglespikelines']
             }
 
+            self.fig.write_image(f'{file_name}.png', scale=6)
+
             #print('Plotting Done')
             #with tempfile.NamedTemporaryFile(suffix=".png") as tmpfile:
             #    pio.write_image(self.fig, tmpfile.name, format="png")
