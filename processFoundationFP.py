@@ -10,14 +10,15 @@ from fpdf import FPDF
 from PyPDF2 import PdfMerger
 import os
 
-folder = r'C:\\Users\\abindal\\OneDrive - Nabih Youssef & Associates\\Documents - The Vault\\Calculations\\2025 -  Stage 3C\\205 - Model Results\\20250310_205\\Foundation Movements\\'
-modelName = '205_LB'
+folder = r'C:\\Users\\abindal\\OneDrive - Nabih Youssef & Associates\\Documents - The Vault\\Calculations\\2025 -  Stage 3C\\205 - Model Results\\20250318_205\\'
+modelName = '205_UB'
+suffix = 'Maximum'
 plotSections = False
 plotLinks = False
 plotDisp = True
 plotRxns = False
 # Needs this file to contain the 'Jt Displacements - Generalized' sheet
-DispFile = '20250310_205_LB_FoundationMovt.xlsx'
+DispFile = '20250318_205_UB_FndMovements.xlsx'
 inUnit = 'mm'
 outUnit = 'mm' 
 # Needs this file to contain the ''Joint Reactions'' sheet
@@ -25,7 +26,17 @@ RxnFile = '2025.02.03 - 305 LB Overall Base Reactions (Coarse Mesh).xlsx'
 unitDict = {'mm': 1, 'm': 1000, 'in': 25.4, 'ft': 304.8}
 color_map_name = 'rainbow'
 
+# Path to the assignments file
+# This file should contain the following sheets:
+# 1. Area Spring Assignments
+# 2. Area Section Assignments
+# 3. Connectivity - Area
+# 4. Joint Coordinates
+# 5. General Grids
+path_for_assignments = folder + '20250318_205_Link Assignments.xlsx'
+
 def convert_units(value, inUnit, outUnit):
+#    return value
     return value * unitDict[inUnit] / unitDict[outUnit]
 
 def get_colors(n, exclusion_list = [(1,1,1), (0,1,1)]):
@@ -79,12 +90,15 @@ def plot_disp(ax, caseName, GMid, scale, jointDisp):
     cmap = plt.get_cmap(color_map_name, len(bounds)-1)
     norm = mcolors.BoundaryNorm(bounds, cmap.N, clip=True)
 
+    print(f"Plotting {caseName} & {GMid}")
 
     #col_map = plt.cm.RdYlGn_r
     query = f"Select Joint, Translation, GlobalX, GlobalY from jointDisp where DispType = '{caseName}' and OutputCase = '{GMid}'"
     disp = sqldf(query, locals())
-    #if caseName == 'U3n':
-    #    scale = 2*scale
+    #convert disp to numeric
+    disp['GlobalX'] = pd.to_numeric(disp['GlobalX'], errors='coerce')
+    disp['GlobalY'] = pd.to_numeric(disp['GlobalY'], errors='coerce')
+    disp['Translation'] = pd.to_numeric(disp['Translation'], errors='coerce')
     if not disp.empty:
         max_disp, min_disp = disp["Translation"].max(), disp["Translation"].min()
         ax.scatter(disp.GlobalX, disp.GlobalY, 
@@ -94,27 +108,23 @@ def plot_disp(ax, caseName, GMid, scale, jointDisp):
         # Show min and max values at bottom right corner
         ax.annotate(f'Max: {max_disp:.2f} {outUnit}', xy=(0.95, 0.05), xycoords='axes fraction', fontsize=4, ha='right', va='bottom')
         ax.annotate(f'Min: {min_disp:.2f} {outUnit}', xy=(0.95, 0.1), xycoords='axes fraction', fontsize=4, ha='right', va='bottom')
+        ax.set_aspect('equal')
     else:
         print(f"No data for {caseName} {GMid}")
     return max_disp, min_disp
 
-
-path = folder + '20250310_205_LinkAssignments.xlsx'
+# Read the assignments file
 sheet = 'Area Spring Assignments'
-areaAssigns = read_file(path, sheet, colNames=['Area', 'LinkProp'])
-print(areaAssigns.head())
+areaAssigns = read_file(path_for_assignments, sheet, colNames=['Area', 'LinkProp'])
 
 sheet = 'Area Section Assignments'
-sectionAssigns = read_file(path, sheet, colNames=['Area', 'Section'])
-print(sectionAssigns.head())
+sectionAssigns = read_file(path_for_assignments, sheet, colNames=['Area', 'Section'])
 
 sheet = 'Connectivity - Area'
-areasCoord = read_file(path, sheet, colNames=['Area', 'NumJoints', 'Joint1', 'Joint2', 'Joint3', 'Joint4'])
-print(areasCoord.head())
+areasCoord = read_file(path_for_assignments, sheet, colNames=['Area', 'NumJoints', 'Joint1', 'Joint2', 'Joint3', 'Joint4'])
 
 sheet = 'Joint Coordinates'
-jointCoord = read_file(path, sheet, colNames=['Joint', 'GlobalX', 'GlobalY'])
-print(jointCoord.head())
+jointCoord = read_file(path_for_assignments, sheet, colNames=['Joint', 'GlobalX', 'GlobalY'])
 
 query = 'Select areasCoord.*, p1.GlobalX as x1, p1.GlobalY as y1, p2.GlobalX as x2, p2.GlobalY as y2, p3.GlobalX as x3, p3.GlobalY as y3, p4.GlobalX as x4, p4.GlobalY as y4 ' \
         'from areasCoord '\
@@ -133,9 +143,8 @@ slabCoord = sqldf(query, locals())
 # replace nan values with empty string in column Section, LinkProp
 slabCoord['Section'] = slabCoord['Section'].fillna('Unassigned')
 slabCoord['LinkProp'] = slabCoord['LinkProp'].fillna('Unassigned')
-print(len(slabCoord))
 
-gridCoord = read_file(path, 'General Grids', colNames=['GridID', 'X1', 'Y1', 'X2', 'Y2'])
+gridCoord = read_file(path_for_assignments, 'General Grids', colNames=['GridID', 'X1', 'Y1', 'X2', 'Y2'])
 def draw_grid(ax, gridCoord):
     for i in range(len(gridCoord)):
         ax.plot([gridCoord.X1[i+1], gridCoord.X2[i+1]], [gridCoord.Y1[i+1], gridCoord.Y2[i+1]], 
@@ -145,8 +154,6 @@ def draw_grid(ax, gridCoord):
                     bbox = dict(boxstyle = "circle,pad=0.3", fc = 'white', ec = 'black', lw=0.2, alpha = 0.5), zorder = 0)
     return
 def draw_slab(ax, slabCoord, **kwargs):
-    print('making slab plot')
-    print(slabCoord.head())
     if 'plot_section' in kwargs:
         legend_list = slabCoord.Section.unique()
         col_list = get_colors(len(legend_list))
@@ -357,7 +364,7 @@ if plotDisp:
 
     #Join with jointCoord to get GlobalX, GlobalY
     jointDisp = pd.merge(jointDisp, jointCoord, left_on='Joint', right_on='Joint', how='left')
-    print(jointDisp)
+    #print(jointDisp)
     units = outUnit
     scale = 0.2
     loadCaseList = jointDisp.OutputCase.unique()
@@ -389,6 +396,15 @@ if plotDisp:
         ax[4].set_title(f'Relative Joint Displacement [U3] (Positive)', fontsize=5)
         ax[5].set_title(f'Relative Joint Displacement [U3] (Negative)', fontsize=5)
         plt.suptitle(f'Relative Joint Displacement (Model {modelName}) [{GMid}]', fontsize=8)
+        [ax[i].set_aspect('equal') for i in range(6)]
+        #for i in range(6):
+        #    # set range of x and y axis based on gridCoord
+        #    min_x = gridCoord[['X1', 'X2']].min().min()
+        #    max_x = gridCoord[['X1', 'X2']].max().max()
+        #    min_y = gridCoord[['Y1', 'Y2']].min().min()
+        #    max_y = gridCoord[['Y1', 'Y2']].max().max()
+        #    ax[i].set_xlim(min_x-20, max_x+20)
+        #    ax[i].set_ylim(min_y-20, max_y+20)
         # Show a colorbar
         vmin, vmax = jointDisp.Translation.min(), jointDisp.Translation.max()
         bounds = np.linspace(0, 60, 15)
@@ -452,7 +468,7 @@ if plotDisp:
     merger = PdfMerger()
     for pdf in pdfs:
         merger.append(pdf)
-    merger.write(f'{folder}/{modelName}_Foundation_JointDisp.pdf')
+    merger.write(f'{folder}/{modelName}_Foundation_JointDisp_{suffix}.pdf')
     merger.close()
 
     for pdf in pdfs:
