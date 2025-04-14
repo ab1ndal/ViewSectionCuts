@@ -158,7 +158,7 @@ class GeneralizedDisplacement:
             WHERE Loc = -1
             """
             botJoint = ps.sqldf(query, locals())
-
+            
             for g in gridList:
                 for gm_i, gm in enumerate(GMList):
                     for d_i, d in enumerate(dispList):

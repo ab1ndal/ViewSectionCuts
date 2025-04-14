@@ -10,20 +10,26 @@ from fpdf import FPDF
 from PyPDF2 import PdfMerger
 import os
 
-folder = r'C:\\Users\\abindal\\OneDrive - Nabih Youssef & Associates\\Documents - The Vault\\Calculations\\2025 -  Stage 3C\\205 - Model Results\\20250318_205\\'
-modelName = '205_UB'
-suffix = 'Maximum'
+folder = r'C:\\Users\\abindal\\OneDrive - Nabih Youssef & Associates\\Documents - The Vault\\Calculations\\2025 -  Stage 3C\\205 - Model Results\\20250324_205\\'
+modelName = '205_LB'
+suffix = 'Residual'
 plotSections = False
 plotLinks = False
 plotDisp = True
 plotRxns = False
 # Needs this file to contain the 'Jt Displacements - Generalized' sheet
-DispFile = '20250318_205_UB_FndMovements.xlsx'
-inUnit = 'mm'
-outUnit = 'mm' 
+DispFile = '20250318_205_LB_FullRuns.xlsx'
+inUnit_disp = 'm'
+outUnit_disp = 'mm' 
+max_disp_lim = 12
+disp_step = 13
 # Needs this file to contain the ''Joint Reactions'' sheet
-RxnFile = '2025.02.03 - 305 LB Overall Base Reactions (Coarse Mesh).xlsx'
-unitDict = {'mm': 1, 'm': 1000, 'in': 25.4, 'ft': 304.8}
+RxnFile = '20250327_305_LB_FndUpdate_Disp_Rxn.xlsx'
+inUnit_rxn = 'kN'
+outUnit_rxn = 'kN'
+max_rxn_lim = 3500
+rxn_step = 11
+unitDict = {'mm': 1, 'm': 1000, 'in': 25.4, 'ft': 304.8, 'kN': 1, 'N': 0.001, 'kip': 4448.22, 'lb': 4.44822, 'ton': 1000 * 9.81}
 color_map_name = 'rainbow'
 
 # Path to the assignments file
@@ -33,11 +39,12 @@ color_map_name = 'rainbow'
 # 3. Connectivity - Area
 # 4. Joint Coordinates
 # 5. General Grids
-path_for_assignments = folder + '20250318_205_Link Assignments.xlsx'
+# 6. Link Props 08 - Slider Isolator
+path_for_assignments = folder + '20250324_205_LB_FndRxn_Movt.xlsx'
 
-def convert_units(value, inUnit, outUnit):
+def convert_units(value, inputUnit, outputUnit):
 #    return value
-    return value * unitDict[inUnit] / unitDict[outUnit]
+    return value * unitDict[inputUnit] / unitDict[outputUnit]
 
 def get_colors(n, exclusion_list = [(1,1,1), (0,1,1)]):
     return distinctipy.get_colors(n_colors = n, exclude_colors = exclusion_list, rng = random.seed(1))
@@ -55,38 +62,34 @@ def read_file(file_path, sheet_name, colNames=None):
         return None
 
 def plot_rxn(ax, caseName, GMid, scale, jointRxns):
-    norm = plt.Normalize(vmin=jointRxns[caseName].min(), vmax=jointRxns[caseName].max())
-    col_map = plt.cm.RdYlGn_r
+    bounds = np.linspace(0, max_rxn_lim, rxn_step)
+    cmap = plt.get_cmap(color_map_name, len(bounds)-1)
+    norm = mcolors.BoundaryNorm(bounds, cmap.N, clip=True)
+
     query = f"Select Joint, {caseName}, GlobalX, GlobalY from jointRxns where OutputCase = '{GMid}'"
     rxns = sqldf(query, locals())
+    #convert rxns to numeric
+    rxns['GlobalX'] = pd.to_numeric(rxns['GlobalX'], errors='coerce')
+    rxns['GlobalY'] = pd.to_numeric(rxns['GlobalY'], errors='coerce')
+    rxns[caseName] = pd.to_numeric(rxns[caseName], errors='coerce')
     if not rxns.empty:
         max_rxn, min_rxn = rxns[caseName].max(), rxns[caseName].min()
         ax.scatter(rxns.GlobalX, rxns.GlobalY, 
                         s=rxns[caseName] * scale,  # Marker size
                         c=rxns[caseName],  # Color mapping
-                        cmap=col_map, norm=norm, 
-                        edgecolors='black', linewidths=0.1)
+                        cmap=cmap, norm=norm, 
+                        edgecolors='black', linewidths=0.05)
         # Show min and max values at bottom right corner
-        ax.annotate(f'Max: {max_rxn:.2f} {units}', xy=(0.95, 0.05), xycoords='axes fraction', fontsize=4, ha='right', va='bottom')
-        ax.annotate(f'Min: {min_rxn:.2f} {units}', xy=(0.95, 0.1), xycoords='axes fraction', fontsize=4, ha='right', va='bottom')
-        # add color bar
-        #cbar = plt.colorbar(ax, orientation='horizontal', fraction=0.046, pad=0.04)
-        #cbar.set_label(f'{caseName} ({units})')
-
-        #tick_values = np.linspace(min_rxn, max_rxn, num=10)  # 10 evenly spaced ticks
-        #cbar.set_ticks(tick_values)
-        #cbar.set_ticklabels([f"{int(val)}" for val in tick_values])
-
-
+        ax.annotate(f'Max: {max_rxn:.2f} {outUnit_rxn}', xy=(0.95, 0.05), xycoords='axes fraction', fontsize=4, ha='right', va='bottom')
+        ax.annotate(f'Min: {min_rxn:.2f} {outUnit_rxn}', xy=(0.95, 0.1), xycoords='axes fraction', fontsize=4, ha='right', va='bottom')
+        ax.set_aspect('equal')
     else:
         print(f"No data for {caseName} {GMid}")
     return max_rxn, min_rxn
 
 
 def plot_disp(ax, caseName, GMid, scale, jointDisp):
-    # Color from red to Green where red is max green is 0
-    #norm = plt.Normalize(vmin=jointDisp["Translation"].min(), vmax=jointDisp["Translation"].max())
-    bounds = np.linspace(0, 60, 15)
+    bounds = np.linspace(0, max_disp_lim, disp_step)
     cmap = plt.get_cmap(color_map_name, len(bounds)-1)
     norm = mcolors.BoundaryNorm(bounds, cmap.N, clip=True)
 
@@ -102,23 +105,26 @@ def plot_disp(ax, caseName, GMid, scale, jointDisp):
     if not disp.empty:
         max_disp, min_disp = disp["Translation"].max(), disp["Translation"].min()
         ax.scatter(disp.GlobalX, disp.GlobalY, 
-                        s=disp.Translation * scale,  # Marker size
+                        s=scale,  # Marker size
                         c=disp.Translation,  # Color mapping
                         cmap=cmap, norm=norm, edgecolors = 'black', linewidths=0.05)
         # Show min and max values at bottom right corner
-        ax.annotate(f'Max: {max_disp:.2f} {outUnit}', xy=(0.95, 0.05), xycoords='axes fraction', fontsize=4, ha='right', va='bottom')
-        ax.annotate(f'Min: {min_disp:.2f} {outUnit}', xy=(0.95, 0.1), xycoords='axes fraction', fontsize=4, ha='right', va='bottom')
+        ax.annotate(f'Max: {max_disp:.2f} {outUnit_disp}', xy=(0.95, 0.05), xycoords='axes fraction', fontsize=4, ha='right', va='bottom')
+        ax.annotate(f'Min: {min_disp:.2f} {outUnit_disp}', xy=(0.95, 0.1), xycoords='axes fraction', fontsize=4, ha='right', va='bottom')
         ax.set_aspect('equal')
     else:
         print(f"No data for {caseName} {GMid}")
     return max_disp, min_disp
 
 # Read the assignments file
+print("Reading assignments file")
 sheet = 'Area Spring Assignments'
 areaAssigns = read_file(path_for_assignments, sheet, colNames=['Area', 'LinkProp'])
+print("Read area spring assignments file")
 
 sheet = 'Area Section Assignments'
 sectionAssigns = read_file(path_for_assignments, sheet, colNames=['Area', 'Section'])
+print("Read area section assignments file")
 
 sheet = 'Connectivity - Area'
 areasCoord = read_file(path_for_assignments, sheet, colNames=['Area', 'NumJoints', 'Joint1', 'Joint2', 'Joint3', 'Joint4'])
@@ -143,6 +149,22 @@ slabCoord = sqldf(query, locals())
 # replace nan values with empty string in column Section, LinkProp
 slabCoord['Section'] = slabCoord['Section'].fillna('Unassigned')
 slabCoord['LinkProp'] = slabCoord['LinkProp'].fillna('Unassigned')
+
+sheet = 'Link Props 08 - Slider Isolator'
+linkPropName = read_file(path_for_assignments, sheet, colNames=['Link', 'DOF', 'TransKE'])
+linkPropName = linkPropName[linkPropName['Link'].str.contains('_LB_FP')]
+linkPropName = linkPropName[linkPropName['DOF'] == 'U1']
+# drop DOF column
+linkPropName.drop(columns=['DOF'], inplace=True)
+linkPropName = linkPropName.rename(columns={'Link': 'Link', 'TransKE': 'K'})
+# Create duplicate elements for each link property by replacing "LB" with "UB"
+linkPropName_UB = linkPropName.copy()
+linkPropName_UB['Link'] = linkPropName_UB['Link'].str.replace('_LB_FP', '_UB_FP')
+linkPropName = pd.concat([linkPropName, linkPropName_UB], ignore_index=True)
+# Make a dictionary of link properties with keys as Link and values as K values
+linkPropName = linkPropName.set_index('Link').squeeze().to_dict()
+print(linkPropName)
+
 
 gridCoord = read_file(path_for_assignments, 'General Grids', colNames=['GridID', 'X1', 'Y1', 'X2', 'Y2'])
 def draw_grid(ax, gridCoord):
@@ -225,7 +247,7 @@ if plotSections:
     ax.legend(handles, col_map.keys(), loc='lower right', fontsize=4, title_fontsize=6, title='Sections', frameon=False)
     ax.set_title(f'Slabs Assigned to Foundation Sections (Model {modelName})')
     plt.tight_layout()
-    plt.savefig(folder + modelName + 'slabs_assigned_to_section.png', dpi=900, bbox_inches='tight', transparent=False)
+    plt.savefig(folder + modelName + 'slabs_assigned_to_section.pdf', dpi=900, bbox_inches='tight', transparent=False)
 
 ###############################################################
 # plot slabs that are assigned to a specific link property
@@ -240,12 +262,14 @@ if plotLinks:
     ax.set_yticks([])
     #show legend using col_map
     handles = [plt.Rectangle((0,0),1,1, facecolor=col_map[label], alpha = 0.3, edgecolor = 'black', linewidth = 0.25) for label in col_map]
-    ax.legend(handles, col_map.keys(), loc='lower right', 
-            ncol=2, fontsize=3, title_fontsize=4, 
+    # Create a list for the legend labels
+    legend_label = [f'{label}_K={linkPropName[label]:,} KPa/m' if label != 'Unassigned' else 'Unassigned' for label in col_map.keys()] 
+    ax.legend(handles, legend_label, loc='upper right', 
+            ncol=2, fontsize=2, title_fontsize=3, 
             title='Link Properites', frameon=False)
     ax.set_title(f'Slabs Assigned to Link Properties (Model {modelName})')
     plt.tight_layout()
-    plt.savefig(folder + modelName + 'slabs_assigned_to_links.png', dpi=900, bbox_inches='tight', transparent=False)
+    plt.savefig(folder + modelName + 'slabs_assigned_to_links.pdf', dpi=900, bbox_inches='tight', transparent=False)
 
 
 #########################################    Create Joint Reaction Plot   ########################################
@@ -266,18 +290,22 @@ if plotRxns:
     jointRxns['F2'] = jointRxns['F2'].round(0)
     jointRxns['F3'] = jointRxns['F3'].round(0)
     jointRxns.fillna(0, inplace=True)
+    # apply unit conversion
+    jointRxns['F1'] = jointRxns['F1'].apply(convert_units, args=(inUnit_rxn, outUnit_rxn))
+    jointRxns['F2'] = jointRxns['F2'].apply(convert_units, args=(inUnit_rxn, outUnit_rxn))
+    jointRxns['F3'] = jointRxns['F3'].apply(convert_units, args=(inUnit_rxn, outUnit_rxn))
 
     query = 'Select jointRxns.*, GlobalX, GlobalY from jointRxns inner join jointCoord where jointRxns.Joint = jointCoord.Joint'
     jointRxns = sqldf(query, locals())
-    units = 'kN'
-    scale = 0.0001
+    scale = 0.001
     loadCaseList = jointRxns.OutputCase.unique()
 
     pdfs = []
     boundListRn = {}
     for GMid in loadCaseList:
         print(f"Plotting joint reactions for {GMid}")
-        fig, ax = plt.subplots(figsize=(8, 8), nrows=2, ncols=2, constrained_layout=True)
+        fig, ax = plt.subplots(figsize=(8, 8), nrows=2, ncols=2)
+        fig.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1, wspace=0.05, hspace=0.05)
         plt.rcParams['savefig.dpi'] = 1200
         # flatten ax
         ax = ax.flatten()
@@ -289,28 +317,87 @@ if plotRxns:
         # plot joint reactions
         boundListRn[GMid] = {}
         for i in range(3):
-            max_val, min_val = plot_rxn(ax[i], f'F{i+1}', GMid, scale, jointRxns)
+            factor = 1 if i == 2 else 3
+            max_val, min_val = plot_rxn(ax[i], f'F{i+1}', GMid, scale*factor, jointRxns)
             boundListRn[GMid][f'F{i+1}'] = (max_val, min_val)
-        ax[0].set_title(f'Joint Reaction [F1] (Absolute)')
-        ax[1].set_title(f'Joint Reaction [F2] (Absolute)')
-        ax[2].set_title(f'Joint Reaction [F3] (Absolute)')
-        plt.suptitle(f'Joint Reactions (Model {modelName}) [{GMid}]')
+        ax[0].set_title(f'Joint Reaction, {outUnit_rxn} [F1] (Absolute)', fontsize=6)
+        ax[1].set_title(f'Joint Reaction, {outUnit_rxn} [F2] (Absolute)', fontsize=6)
+        ax[2].set_title(f'Joint Reaction, {outUnit_rxn} [F3] (Absolute)', fontsize=6)
+        plt.suptitle(f'Joint Reactions (Model {modelName}) [{GMid}]', fontsize=8)
+        for i in range(3):
+            ax[i].set_aspect('equal')
+        ax[3].set_visible(False)  # Hide the last subplot
+        
         # Show a colorbar
-        #vmin, vmax = jointRxns.F1.min(), jointRxns.F1.max()
-        #sm = plt.cm.ScalarMappable(cmap=plt.cm.RdYlGn_r, norm=plt.Normalize(vmin=vmin, vmax=vmax))
-        #sm.set_array([])  
-
+        bounds = np.linspace(0, max_rxn_lim, rxn_step)
+        cmap = plt.get_cmap(color_map_name, len(bounds)-1)
+        norm = mcolors.BoundaryNorm(bounds, cmap.N, clip=True)
+        sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+        sm.set_array([])
         # Create the colorbar
-        #cbar = plt.colorbar(sm, ax=ax, orientation='horizontal', fraction=0.046, pad=0.04)
-        #cbar.set_label(f'Reaction ({units})')
-
+        cbar = plt.colorbar(sm, ax=ax, orientation='horizontal', fraction=0.046, pad=0.04)
+        cbar.set_label(f'Reaction ({outUnit_rxn})')
         # Set colorbar ticks and labels
-        #tick_values = np.linspace(vmin, vmax, num=10)  # 5 evenly spaced ticks
-        #cbar.set_ticks(tick_values)
-        #cbar.set_ticklabels([f"{int(val)}" for val in tick_values])
+        cbar.set_ticks(bounds)
+        print(bounds)
+        cbar.set_ticklabels([f"{int(val)}" for val in bounds])
+        #plt.tight_layout()
+        
         plt.savefig(f'{folder}/{modelName}_slabs_joint_reaction_{GMid}.pdf', dpi=1200, bbox_inches='tight', transparent=False)
         pdfs.append(f'{folder}/{modelName}_slabs_joint_reaction_{GMid}.pdf')
         plt.close()
+
+    pdf = FPDF(format = 'letter')
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.add_page()
+    pdf.set_font("Arial", size=8)
+
+    # Title
+    pdf.cell(200, 10, f"Model {modelName} - Joint Reactions ({outUnit_rxn})", 0, 1, 'C')
+    pdf.ln(10)
+
+    # Set font size for table
+    pdf.set_font("Arial", size=8)
+
+    # Define column widths
+    col_widths = [40] + [25] * 3  # GMid + (F1/F2/F3)
+    table_width = sum(col_widths)  # Total table width
+    page_width = pdf.w - 2 * pdf.l_margin  # Page width minus margins
+    x_start = (page_width - table_width) / 2 + pdf.l_margin  # Center position
+
+    pdf.set_x(x_start)  # Set x position to center the table
+
+    # Header Row with Borders
+    pdf.cell(col_widths[0], 10, "Output Case", 1, 0, 'C')
+    for case in range(3):
+        pdf.cell(col_widths[1], 10, f"F{case+1} ({outUnit_rxn})", 1, 0, 'C')
+    pdf.ln()
+
+    # Data Rows with Borders
+    for GMid in loadCaseList:
+        pdf.set_x(x_start)
+        pdf.cell(col_widths[0], 10, GMid, 1, 0, 'C')  # Output Case column
+        for case in range(3):
+            max_val, min_val = boundListRn[GMid][f"F{case+1}"]  # Get min/max values
+            #pdf.cell(col_widths[1], 10, f"{min_val:.2f}", 1, 0, 'C')
+            pdf.cell(col_widths[1], 10, f"{max_val:.2f}", 1, 0, 'C')
+        pdf.ln()
+
+    # Save PDF
+    pdf.output(f'{folder}/{modelName}_slabs_jointRxn_table.pdf')
+    # add to pdfs list in the beginning
+    pdfs.insert(0, f'{folder}/{modelName}_slabs_jointRxn_table.pdf')
+
+    # Combine all pdfs into a single pdf
+    merger = PdfMerger()
+    for pdf in pdfs:
+        merger.append(pdf)
+    merger.write(f'{folder}/{modelName}_Foundation_JointRxn_{suffix}.pdf')
+    merger.close()
+
+    for pdf in pdfs:
+        os.remove(pdf)
+    print("Done")
 
 
 ######################################### Create Joint Displacement Plots ########################################
@@ -346,7 +433,7 @@ if plotDisp:
     jointDisp['Translation'] = jointDisp['Translation'].abs()
 
     # apply unit conversion
-    jointDisp['Translation'] = jointDisp['Translation'].apply(convert_units, args=(inUnit, outUnit))
+    jointDisp['Translation'] = jointDisp['Translation'].apply(convert_units, args=(inUnit_disp, outUnit_disp))
 
     jointDisp = jointDisp.groupby(['Joint', 'OutputCase', 'DispType'], as_index=False)['Translation'].max()
 
@@ -365,8 +452,8 @@ if plotDisp:
     #Join with jointCoord to get GlobalX, GlobalY
     jointDisp = pd.merge(jointDisp, jointCoord, left_on='Joint', right_on='Joint', how='left')
     #print(jointDisp)
-    units = outUnit
-    scale = 0.2
+    #units = outUnit
+    scale = 2
     loadCaseList = jointDisp.OutputCase.unique()
     caseList = ['U1p', 'U1n', 'U2p', 'U2n', 'U3p', 'U3n']
     pdfs = []
@@ -407,7 +494,7 @@ if plotDisp:
         #    ax[i].set_ylim(min_y-20, max_y+20)
         # Show a colorbar
         vmin, vmax = jointDisp.Translation.min(), jointDisp.Translation.max()
-        bounds = np.linspace(0, 60, 15)
+        bounds = np.linspace(0, max_disp_lim, disp_step)
         cmap = plt.get_cmap(color_map_name, len(bounds)-1)
         norm = mcolors.BoundaryNorm(bounds, cmap.N, clip=True)
 
@@ -417,13 +504,13 @@ if plotDisp:
 
         # Create the colorbar
         cbar = plt.colorbar(sm, ax=ax, orientation='horizontal', fraction=0.046, pad=0.04)
-        cbar.set_label(f'Displacement ({units})')
+        cbar.set_label(f'Displacement ({outUnit_disp})')
 
         # Set colorbar ticks and labels
         #tick_values = np.linspace(0, 30, num=10)  # 10 evenly spaced ticks
 
         cbar.set_ticks(bounds)
-        cbar.set_ticklabels([f"{int(val)}" for val in bounds])
+        cbar.set_ticklabels([f"{round(val,1)}" for val in bounds], fontsize=6)
         plt.savefig(f'{folder}/{modelName}_slabs_jointDisp_{GMid}.pdf', dpi=1200, bbox_inches='tight', transparent=False)
         pdfs.append(f'{folder}/{modelName}_slabs_jointDisp_{GMid}.pdf')
         plt.close()
@@ -435,7 +522,7 @@ if plotDisp:
     pdf.set_font("Arial", size=8)
 
     # Title
-    pdf.cell(200, 10, f"Model {modelName} - Relative Joint Displacements ({units})", 0, 1, 'C')
+    pdf.cell(200, 10, f"Model {modelName} - Relative Joint Displacements ({outUnit_disp})", 0, 1, 'C')
     pdf.ln(10)
 
     # Set font size for table
