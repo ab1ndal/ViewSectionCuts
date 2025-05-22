@@ -10,21 +10,23 @@ from fpdf import FPDF
 from PyPDF2 import PdfMerger
 import os
 
-folder = r'C:\\Users\\abindal\\OneDrive - Nabih Youssef & Associates\\Documents - The Vault\\Calculations\\2025 -  Stage 3C\\205 - Model Results\\20250324_205\\'
-modelName = '205_LB'
+folder = r'W:\\2023\\23184 - Trojena Neom PBD\\3 Engineering\\1 Calculations\\_Stage 3C Calc Package (100%)\\2.0 - Performanced Based Seismic Design\\2.3 - Building 305 Building Results\\2.3.5 - Foundation Displacements\\'
+modelName = '305_LB'
 suffix = 'Residual'
 plotSections = False
 plotLinks = False
 plotDisp = True
 plotRxns = False
 # Needs this file to contain the 'Jt Displacements - Generalized' sheet
-DispFile = '20250318_205_LB_FullRuns.xlsx'
-inUnit_disp = 'm'
+DispFile = '20250327_305_LB_FndUpdate_FullDisp.xlsx'
+inUnit_disp = 'in'
 outUnit_disp = 'mm' 
-max_disp_lim = 12
-disp_step = 13
+max_disp_lim = 12#40#12
+disp_step = 13#21#13
+# 205 Limits Max: 25mm, num_Step: 11
+# 305 Limits Max: 40mm, num_Step: 21
 # Needs this file to contain the ''Joint Reactions'' sheet
-RxnFile = '20250327_305_LB_FndUpdate_Disp_Rxn.xlsx'
+RxnFile = '20250412_205_UB_FndDisp.xlsx'
 inUnit_rxn = 'kN'
 outUnit_rxn = 'kN'
 max_rxn_lim = 3500
@@ -40,7 +42,7 @@ color_map_name = 'rainbow'
 # 4. Joint Coordinates
 # 5. General Grids
 # 6. Link Props 08 - Slider Isolator
-path_for_assignments = folder + '20250324_205_LB_FndRxn_Movt.xlsx'
+path_for_assignments = folder + '20250414_305_LB_FndDisp.xlsx'
 
 def convert_units(value, inputUnit, outputUnit):
 #    return value
@@ -102,10 +104,12 @@ def plot_disp(ax, caseName, GMid, scale, jointDisp):
     disp['GlobalX'] = pd.to_numeric(disp['GlobalX'], errors='coerce')
     disp['GlobalY'] = pd.to_numeric(disp['GlobalY'], errors='coerce')
     disp['Translation'] = pd.to_numeric(disp['Translation'], errors='coerce')
+    # Remove NaN values
+    disp = disp.dropna(subset=['GlobalX', 'GlobalY', 'Translation'])
     if not disp.empty:
         max_disp, min_disp = disp["Translation"].max(), disp["Translation"].min()
         ax.scatter(disp.GlobalX, disp.GlobalY, 
-                        s=scale,  # Marker size
+                        s=[0 if d ==0 else scale for d in disp.Translation],  # Marker size
                         c=disp.Translation,  # Color mapping
                         cmap=cmap, norm=norm, edgecolors = 'black', linewidths=0.05)
         # Show min and max values at bottom right corner

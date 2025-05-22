@@ -1,5 +1,6 @@
 import pandas as pd
 from pandasql import sqldf
+from pathlib import Path
 
 def read_file(file_path, sheet_name, colNames=None):
     try:
@@ -13,10 +14,11 @@ def read_file(file_path, sheet_name, colNames=None):
         return None
     
 # Read Group Information
-path = "C:\\Users\\abindal\\OneDrive - Nabih Youssef & Associates\\Documents - The Vault\\Calculations\\2025 -  Stage 3C\\305 - SAP Models\\"
-fileName = "20250409_305_UB_Groups.xlsx"
+raw_path = r"C:\Users\abindal\OneDrive - Nabih Youssef & Associates\Desktop"
+path = Path(raw_path)
+fileName = "20250430_305_Groups.xlsx"
 sheet = 'Groups 2 - Assignments'
-groupInfo = read_file(path+fileName, sheet)
+groupInfo = read_file(path / fileName, sheet)
 query = "Select GroupName, ObjectLabel as Joints "\
         "from groupInfo where ObjectType = 'Joint' "\
         "and GroupName GLOB 'Support Group 0[0-9]'"
@@ -69,4 +71,4 @@ for group in jointDict.keys():
 genDisp = pd.concat([genDisp, pd.DataFrame(data)], ignore_index=True)
         
 # Export the dataframe to a excel file
-genDisp.to_excel(path+'General Displacements to import.xlsx', index=False)
+genDisp.to_excel(path / 'General Displacements to import.xlsx', index=False)
