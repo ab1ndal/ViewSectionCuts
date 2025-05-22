@@ -14,6 +14,7 @@ def read_file(file_path, sheet_name, colNames=None):
         return None
     
 # Read Group Information
+modelName = '305'
 raw_path = r"C:\Users\abindal\OneDrive - Nabih Youssef & Associates\Desktop"
 path = Path(raw_path)
 fileName = "20250430_305_Groups.xlsx"
@@ -35,25 +36,27 @@ for group in jointGroups.GroupName.unique():
     jointDict[group] = joints.Joints.values
 
 # A list of control points for each support group
-# Model 305 has 8 support groups
-contlPoints = {'Support Group 01': 9329, 
-               'Support Group 02': 14539, 
-               'Support Group 03': 14472, 
-               'Support Group 04': 14278,
-               'Support Group 05': 14586,
-               'Support Group 06': 14579,
-               'Support Group 07': 14578,
-               'Support Group 08': 13351}
+if modelName == '305':
+    # Model 305 has 8 support groups
+    contlPoints = {'Support Group 01': 9329, 
+                   'Support Group 02': 14539, 
+                   'Support Group 03': 14472, 
+                   'Support Group 04': 14278,
+                   'Support Group 05': 14586,
+                   'Support Group 06': 14579,
+                   'Support Group 07': 14578,
+                   'Support Group 08': 13351}
 
-# Model 205 has 8 support groups
-# contlPoints = {'Support Group 01': 3608, 
-#                'Support Group 02': 3609, 
-#                'Support Group 03': 3647, 
-#                'Support Group 04': 3662,
-#                'Support Group 05': 3753,
-#                'Support Group 06': 3820,
-#                'Support Group 07': 3830,
-#                'Support Group 08': 3858}
+elif modelName == '205':
+    # Model 205 has 8 support groups
+    contlPoints = {'Support Group 01': 3608, 
+                   'Support Group 02': 3609, 
+                   'Support Group 03': 3647, 
+                   'Support Group 04': 3662,
+                   'Support Group 05': 3753,
+                   'Support Group 06': 3820,
+                   'Support Group 07': 3830,
+                   'Support Group 08': 3858}
 
 # For each support group, for each element in the list, add entry into a dataframe for transational displacements compared to control point.
 genDisp = pd.DataFrame(columns=['GenDispl', 'Joint', 'U1SF', 'U2SF', 'U3SF', 'R1SF', 'R2SF', 'R3SF'])
@@ -71,4 +74,4 @@ for group in jointDict.keys():
 genDisp = pd.concat([genDisp, pd.DataFrame(data)], ignore_index=True)
         
 # Export the dataframe to a excel file
-genDisp.to_excel(path / 'General Displacements to import.xlsx', index=False)
+genDisp.to_excel(path / f'{modelName}_General Displacements to import.xlsx', index=False)
