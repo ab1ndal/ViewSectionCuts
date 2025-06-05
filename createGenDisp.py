@@ -15,9 +15,9 @@ def read_file(file_path, sheet_name, colNames=None):
     
 # Read Group Information
 modelName = '305'
-raw_path = r"C:\Users\abindal\OneDrive - Nabih Youssef & Associates\Desktop"
+raw_path = r"C:\Users\abindal\Downloads"
 path = Path(raw_path)
-fileName = "20250430_305_Groups.xlsx"
+fileName = "20250602_305_LB_Groups.xlsx"
 sheet = 'Groups 2 - Assignments'
 groupInfo = read_file(path / fileName, sheet)
 query = "Select GroupName, ObjectLabel as Joints "\
