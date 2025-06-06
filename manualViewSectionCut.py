@@ -2,11 +2,20 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FuncFormatter
 import numpy as np
+from pathlib import Path
 plt.rcParams.update({'font.family': 'Arial'})
 
-filePath = r'W:\\2023\\23184 - Trojena Neom PBD\\3 Engineering\\1 Calculations\\_Stage 3C Calc Package (100%)\\2.0 - Performance Based Seismic Design\\2.3 - Building 305 Building Results\\2.3.2 - Global Story Forces\\'
-fileName = '20250414_305_LB_StoryForces.xlsx'
-inFile = filePath + fileName
+filePath = Path(r"C:\Users\abindal\Documents\01_Projects\01_The Vault\205")
+fileName = "20250529_205_UB_StoryForces.xlsx"
+inFile = filePath / fileName
+plotOverall = False
+model = '205'
+casetype = 'UB'
+
+if plotOverall:
+    suffix = 'Overall'
+else:
+    suffix = 'Gridline'
 
 loadCaseList = ['1.0D+0.5L', 'MCE-All GM Average (Seis Only)', r'SLE 100%+30% Envelope']
 loadCaseName = ['Gravity', 'MCE-Only', 'SLE']
@@ -14,21 +23,29 @@ loadCaseName = ['Gravity', 'MCE-Only', 'SLE']
 plotList = ['F1', 'F2', 'F3', 'M2', 'M1', 'M3']
 xLabelList = ['Shear Along Axis 1 (kN)', 'Shear Along Axis 2 (kN)', 'Axial (kN)', 'Flexure About Axis 2 (kN-m)', 'Flexure About Axis 1 (kN-m)', 'Torsion (kN-m)']
 titleList = ['F1 (A-Canyon)', 'F2 (X-Canyon)', 'F3 (Vertical)', 'M2 (A-Canyon)', 'M1 (X-Canyon)', 'M3']
-#cutList = ['N12A-All', 'N12A-Conc', 'N12B-All', 'N12B-Conc', 'N12C-All', 'N12C-Conc', 'N12D-All', 'N12D-Conc', 'N12-All', 'N12-Conc', 'N13A-All', 'N13A-Conc', 'N13B-All', 'N13C-All', 
-#           'N13D-All', 'N13E-All', 'N13F-All', 'N13G-All', 'N13H-All']
-cutList = ['Overall', 'Conc_Overall', 'Steel_Overall']
-#cutList = ['S12A-All', 'S12A-Conc', 'S12B-All', 'S12B-Conc', 'S12C-All', 'S12C-Conc', 'S12D-All', 'S12D-Conc', 'S12-All', 'S12-Conc', 'S13A-All', 'S13A-Conc', 'S13B-All',
-#           'S13C-All', 'S13D-All', 'S13E-All', 'S13F-All', 'S13G-All', 'S13H-All', 'S13J-All', 'S13K-All']
+if plotOverall:
+    cutList = ['Overall', 'Conc_Overall', 'Steel_Overall']
+else:
+    if model == '205':
+        cutList = ['N12A-All', 'N12A-Conc', 'N12B-All', 'N12B-Conc', 'N12C-All', 'N12C-Conc', 'N12D-All', 'N12D-Conc', 'N12-All', 'N12-Conc', 'N13A-All', 'N13A-Conc', 'N13B-All', 'N13C-All', 
+                   'N13D-All', 'N13E-All', 'N13F-All', 'N13G-All', 'N13H-All']
+    elif model == '305':
+        cutList = ['S12A-All', 'S12A-Conc', 'S12B-All', 'S12B-Conc', 'S12C-All', 'S12C-Conc', 'S12D-All', 'S12D-Conc', 'S12-All', 'S12-Conc', 'S13A-All', 'S13A-Conc', 'S13B-All',
+                   'S13C-All', 'S13D-All', 'S13E-All', 'S13F-All', 'S13G-All', 'S13H-All', 'S13J-All', 'S13K-All']
 collist = ["#25262b", "#fa5252", "#4c6ef5","#228be6","#15aabf","#12b886", "#40c057","#82c91e","#fab005","#fd7e14"]
-modelName = '305_LB'
-#shear_limit = (-15000, 15000, 5000)
-#moment_limit = (-50000, 75000, 25000)
-#torsion_limit = (-15000, 10000, 5000)
-#axial_limit = (-10000, 25000, 5000)
-shear_limit = (-60000, 60000, 20000)
-moment_limit = (-6000000, 2000000, 1000000)
-torsion_limit = (-2000000, 2000000, 500000)
-axial_limit = (-70000, 350000, 70000)
+modelName = f'{model}_{casetype}'
+
+if plotOverall:
+    shear_limit = (-60000, 60000, 20000)
+    moment_limit = (-6000000, 2000000, 1000000)
+    torsion_limit = (-2000000, 2000000, 500000)
+    axial_limit = (-70000, 350000, 70000)
+else:   
+    shear_limit = (-15000, 15000, 5000)
+    moment_limit = (-50000, 75000, 25000)
+    torsion_limit = (-15000, 10000, 5000)
+    axial_limit = (-10000, 25000, 5000)
+
 limit_list = [shear_limit, shear_limit, axial_limit, moment_limit, moment_limit, torsion_limit]
 
 def gen_limit_vals(limit):
@@ -157,7 +174,7 @@ for cut in cutList:
     fig.suptitle(f"Model {modelName} - Responses ({cut})", fontsize=14, fontweight='bold')
 
     # Save the plot
-    outputFile = f"{filePath}\\{modelName}_{cut}.pdf"
+    outputFile = filePath / f"{modelName}_{cut}.pdf"
     pdfs.append(outputFile)
     #tight_layout()
     plt.tight_layout()
@@ -168,7 +185,7 @@ for cut in cutList:
 import PyPDF2
 import os
 
-output_pdf = f"{filePath}\\{modelName}_All_SectionCuts_Overall.pdf"
+output_pdf = filePath / f"{modelName}_All_{suffix}.pdf"
 
 # Create a PdfFileMerger object
 pdf_merger = PyPDF2.PdfMerger()

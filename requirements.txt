@@ -10,6 +10,7 @@ plotly==5.22.0
 SQLAlchemy==2.0.31
 gunicorn==22.0.0
 openpyxl==3.1.4
-matplotlib==3.9
-psycopg2==2.9.9
+matplotlib==3.8.4
+psycopg2-binary==2.9.9
 python-dotenv==1.0.1
+PyPDF2==3.0.1
