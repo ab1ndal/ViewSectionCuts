@@ -9,24 +9,31 @@ import numpy as np
 from fpdf import FPDF
 from PyPDF2 import PdfMerger
 import os
+from pathlib import Path
 
-folder = r'W:\\2023\\23184 - Trojena Neom PBD\\3 Engineering\\1 Calculations\\_Stage 3C Calc Package (100%)\\2.0 - Performanced Based Seismic Design\\2.3 - Building 305 Building Results\\2.3.5 - Foundation Displacements\\'
-modelName = '305_LB'
-suffix = 'Residual'
-plotSections = False
-plotLinks = False
+folder = Path(r'C:\Users\abindal\Documents\01_Projects\01_The Vault\205')
+model = '205'
+casetype = 'UB'
+modelName = f'{model}_{casetype}'
+suffix = 'Max'
+plotSections = True
+plotLinks = True
 plotDisp = True
-plotRxns = False
+plotRxns = True
+
 # Needs this file to contain the 'Jt Displacements - Generalized' sheet
-DispFile = '20250327_305_LB_FndUpdate_FullDisp.xlsx'
-inUnit_disp = 'in'
-outUnit_disp = 'mm' 
-max_disp_lim = 12#40#12
-disp_step = 13#21#13
-# 205 Limits Max: 25mm, num_Step: 11
-# 305 Limits Max: 40mm, num_Step: 21
+DispFile = '20250529_205_UB_FndDisp.xlsx'
+inUnit_disp = 'm'
+outUnit_disp = 'mm'
+if model == '205':
+    max_disp_lim = 25
+    disp_step = 11
+else:
+    max_disp_lim = 40
+    disp_step = 21
+
 # Needs this file to contain the ''Joint Reactions'' sheet
-RxnFile = '20250412_205_UB_FndDisp.xlsx'
+RxnFile = '20250529_205_UB_FndDisp.xlsx'
 inUnit_rxn = 'kN'
 outUnit_rxn = 'kN'
 max_rxn_lim = 3500
@@ -42,7 +49,7 @@ color_map_name = 'rainbow'
 # 4. Joint Coordinates
 # 5. General Grids
 # 6. Link Props 08 - Slider Isolator
-path_for_assignments = folder + '20250414_305_LB_FndDisp.xlsx'
+path_for_assignments = folder / '20250529_205_UB_FndDisp.xlsx'
 
 def convert_units(value, inputUnit, outputUnit):
 #    return value
@@ -156,18 +163,14 @@ slabCoord['LinkProp'] = slabCoord['LinkProp'].fillna('Unassigned')
 
 sheet = 'Link Props 08 - Slider Isolator'
 linkPropName = read_file(path_for_assignments, sheet, colNames=['Link', 'DOF', 'TransKE'])
-linkPropName = linkPropName[linkPropName['Link'].str.contains('_LB_FP')]
+linkPropName = linkPropName[linkPropName['Link'].str.contains('_LB_FP|_UB_FP')]
 linkPropName = linkPropName[linkPropName['DOF'] == 'U1']
 # drop DOF column
 linkPropName.drop(columns=['DOF'], inplace=True)
 linkPropName = linkPropName.rename(columns={'Link': 'Link', 'TransKE': 'K'})
-# Create duplicate elements for each link property by replacing "LB" with "UB"
-linkPropName_UB = linkPropName.copy()
-linkPropName_UB['Link'] = linkPropName_UB['Link'].str.replace('_LB_FP', '_UB_FP')
-linkPropName = pd.concat([linkPropName, linkPropName_UB], ignore_index=True)
-# Make a dictionary of link properties with keys as Link and values as K values
 linkPropName = linkPropName.set_index('Link').squeeze().to_dict()
-print(linkPropName)
+for k, v in linkPropName.items():
+    print(f'{k}: {v}')
 
 
 gridCoord = read_file(path_for_assignments, 'General Grids', colNames=['GridID', 'X1', 'Y1', 'X2', 'Y2'])
@@ -251,7 +254,7 @@ if plotSections:
     ax.legend(handles, col_map.keys(), loc='lower right', fontsize=4, title_fontsize=6, title='Sections', frameon=False)
     ax.set_title(f'Slabs Assigned to Foundation Sections (Model {modelName})')
     plt.tight_layout()
-    plt.savefig(folder + modelName + 'slabs_assigned_to_section.pdf', dpi=900, bbox_inches='tight', transparent=False)
+    plt.savefig(folder / f'{modelName}_slabs_assigned_to_section.pdf', dpi=900, bbox_inches='tight', transparent=False)
 
 ###############################################################
 # plot slabs that are assigned to a specific link property
@@ -273,13 +276,13 @@ if plotLinks:
             title='Link Properites', frameon=False)
     ax.set_title(f'Slabs Assigned to Link Properties (Model {modelName})')
     plt.tight_layout()
-    plt.savefig(folder + modelName + 'slabs_assigned_to_links.pdf', dpi=900, bbox_inches='tight', transparent=False)
+    plt.savefig(folder / f'{modelName}_slabs_assigned_to_links.pdf', dpi=900, bbox_inches='tight', transparent=False)
 
 
 #########################################    Create Joint Reaction Plot   ########################################
 if plotRxns:
     print("Plotting slabs with joint reactions")
-    envRxnsFile = folder + RxnFile
+    envRxnsFile = folder / RxnFile
     sheet = 'Joint Reactions'
     jointRxns = read_file(envRxnsFile, sheet, colNames=['Joint', 'OutputCase', 'F1', 'F2', 'F3'])
     jointRxns['F1'] = jointRxns['F1'].abs()
@@ -347,8 +350,8 @@ if plotRxns:
         cbar.set_ticklabels([f"{int(val)}" for val in bounds])
         #plt.tight_layout()
         
-        plt.savefig(f'{folder}/{modelName}_slabs_joint_reaction_{GMid}.pdf', dpi=1200, bbox_inches='tight', transparent=False)
-        pdfs.append(f'{folder}/{modelName}_slabs_joint_reaction_{GMid}.pdf')
+        plt.savefig(folder / f'{modelName}_slabs_joint_reaction_{GMid}.pdf', dpi=1200, bbox_inches='tight', transparent=False)
+        pdfs.append(folder / f'{modelName}_slabs_joint_reaction_{GMid}.pdf')
         plt.close()
 
     pdf = FPDF(format = 'letter')
@@ -388,15 +391,15 @@ if plotRxns:
         pdf.ln()
 
     # Save PDF
-    pdf.output(f'{folder}/{modelName}_slabs_jointRxn_table.pdf')
+    pdf.output(folder / f'{modelName}_slabs_jointRxn_table.pdf')
     # add to pdfs list in the beginning
-    pdfs.insert(0, f'{folder}/{modelName}_slabs_jointRxn_table.pdf')
+    pdfs.insert(0, folder / f'{modelName}_slabs_jointRxn_table.pdf')
 
     # Combine all pdfs into a single pdf
     merger = PdfMerger()
     for pdf in pdfs:
         merger.append(pdf)
-    merger.write(f'{folder}/{modelName}_Foundation_JointRxn_{suffix}.pdf')
+    merger.write(folder / f'{modelName}_Foundation_JointRxn_{suffix}.pdf')
     merger.close()
 
     for pdf in pdfs:
@@ -407,7 +410,7 @@ if plotRxns:
 ######################################### Create Joint Displacement Plots ########################################
 if plotDisp:
     print("Plotting slabs with joint displacements")
-    envDispFile = folder + DispFile
+    envDispFile = folder / DispFile
     sheet = 'Jt Displacements - Generalized'
     jointDisp = read_file(envDispFile, sheet, colNames=['GenDispl', 'OutputCase', 'Translation'])
     # Support Group is first 4 digits
@@ -515,8 +518,8 @@ if plotDisp:
 
         cbar.set_ticks(bounds)
         cbar.set_ticklabels([f"{round(val,1)}" for val in bounds], fontsize=6)
-        plt.savefig(f'{folder}/{modelName}_slabs_jointDisp_{GMid}.pdf', dpi=1200, bbox_inches='tight', transparent=False)
-        pdfs.append(f'{folder}/{modelName}_slabs_jointDisp_{GMid}.pdf')
+        plt.savefig(folder / f'{modelName}_slabs_jointDisp_{GMid}.pdf', dpi=1200, bbox_inches='tight', transparent=False)
+        pdfs.append(folder / f'{modelName}_slabs_jointDisp_{GMid}.pdf')
         plt.close()
 
     # Create a table of max and min values for each case and each displacement and put it in a pdf
@@ -551,15 +554,15 @@ if plotDisp:
         pdf.ln()
 
     # Save PDF
-    pdf.output(f'{folder}/{modelName}_slabs_jointDisp_table.pdf')
+    pdf.output(folder / f'{modelName}_slabs_jointDisp_table.pdf')
     # add to pdfs list in the beginning
-    pdfs.insert(0, f'{folder}/{modelName}_slabs_jointDisp_table.pdf')
+    pdfs.insert(0, folder / f'{modelName}_slabs_jointDisp_table.pdf')
 
     # Combine all pdfs into a single pdf
     merger = PdfMerger()
     for pdf in pdfs:
         merger.append(pdf)
-    merger.write(f'{folder}/{modelName}_Foundation_JointDisp_{suffix}.pdf')
+    merger.write(folder / f'{modelName}_Foundation_JointDisp_{suffix}.pdf')
     merger.close()
 
     for pdf in pdfs:
